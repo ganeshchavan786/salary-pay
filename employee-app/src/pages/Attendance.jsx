@@ -69,7 +69,7 @@ export default function Attendance() {
     try {
       setLoadingRecords(true)
       const today = format(new Date(), 'yyyy-MM-dd')
-      const res = await attendanceApi.getAll({ start_date: today, end_date: today, limit: 20 })
+      const res = await attendanceApi.getMy({ start_date: today, end_date: today, limit: 20 })
       const records = (res.data.records || res.data || []).filter(
         r => r.emp_id === employee?.emp_id
       )
@@ -87,14 +87,34 @@ export default function Attendance() {
     setStatus('camera')
     setCameraOpen(true)
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API is not supported in this browser. (Make sure you use HTTPS)")
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 }
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
       })
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
     } catch (e) {
+      console.error("Camera Error:", e)
       setStatus('error')
-      setLastResult({ message: 'Camera access denied. Please allow camera permission.' })
+      
+      let errMsg = "Unknown camera error";
+      if (e instanceof Error) {
+        errMsg = `${e.name}: ${e.message}`;
+      } else if (typeof e === 'string') {
+        errMsg = e;
+      } else if (e && e.message) {
+        errMsg = e.message;
+      }
+      
+      alert(`Debug: Camera failed -> ${errMsg}`)
+      
+      setLastResult({ message: `Camera access failed: ${errMsg}` })
       setCameraOpen(false)
     }
   }
@@ -108,15 +128,30 @@ export default function Attendance() {
   }
 
   function captureAndSubmit() {
-    if (!videoRef.current || !canvasRef.current) return
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    canvas.getContext('2d').drawImage(video, 0, 0)
-    const photoBase64 = canvas.toDataURL('image/jpeg', 0.7)
-    stopCamera()
-    submitAttendance(photoBase64)
+    try {
+      if (!videoRef.current || !canvasRef.current) return
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+      canvas.getContext('2d').drawImage(video, 0, 0)
+      
+      // Some browsers (like Brave) block canvas.toDataURL for fingerprinting protection
+      let photoBase64 = ""
+      try {
+        photoBase64 = canvas.toDataURL('image/jpeg', 0.7)
+      } catch (err) {
+        console.warn("Canvas export blocked, sending empty image", err)
+      }
+      
+      stopCamera()
+      submitAttendance(photoBase64)
+    } catch (e) {
+      console.error("Capture Error:", e)
+      stopCamera()
+      setStatus('error')
+      setLastResult({ message: `Capture failed: ${e.message || String(e)}` })
+    }
   }
 
   // ── Submit Attendance ──────────────────────────────────────────────────────
@@ -130,8 +165,12 @@ export default function Attendance() {
     setStatus('submitting')
 
     const now = new Date()
+    const safeUUID = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : Date.now().toString() + Math.random().toString(36).substring(2);
+
     const record = {
-      id: crypto.randomUUID(),
+      local_id: safeUUID,
       emp_id: employee?.emp_id,
       emp_code: employee?.emp_code,
       emp_name: employee?.name || employee?.username,
@@ -156,7 +195,18 @@ export default function Attendance() {
       fetchTodayRecords()
     } catch (e) {
       setStatus('error')
-      setLastResult({ message: e.response?.data?.detail || 'Submission failed. Please try again.' })
+      
+      let errMsg = 'Submission failed. Please try again.'
+      if (e.response?.data?.detail) {
+        if (Array.isArray(e.response.data.detail)) {
+          // Pydantic validation error array
+          errMsg = e.response.data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ')
+        } else {
+          errMsg = String(e.response.data.detail)
+        }
+      }
+      
+      setLastResult({ message: errMsg })
     }
   }
 

@@ -127,8 +127,55 @@ async def health_check():
 @app.get("/api/status")
 async def server_status():
     """Heartbeat endpoint — SRS GET /v1/status"""
+    try:
+        from app.database import AsyncSessionLocal
+        from app.models.user import User
+        from app.models.employee import Employee
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(User))
+            users = [{"id": u.id, "username": u.username, "emp_id": u.emp_id, "role": u.role.value} for u in result.scalars().all()]
+            
+            emp_result = await db.execute(select(Employee))
+            employees = [{"id": e.id, "emp_code": e.emp_code, "email": getattr(e, 'email', None), "name": getattr(e, 'name', getattr(e, 'first_name', ''))} for e in emp_result.scalars().all()]
+            
+            from app.models.salary_calculation import SalaryCalculation
+            sc_result = await db.execute(select(SalaryCalculation))
+            salary_calculations = [{"id": sc.id, "employee_id": sc.employee_id, "status": sc.status.value if hasattr(sc.status, 'value') else sc.status} for sc in sc_result.scalars().all()]
+            
+            from app.models.attendance import Attendance
+            att_result = await db.execute(select(Attendance).order_by(Attendance.created_at.desc()).limit(20))
+            attendance_records = [{"id": a.id, "emp_id": a.emp_id, "date": str(a.date), "time": str(a.time), "type": a.attendance_type.value if hasattr(a.attendance_type, 'value') else a.attendance_type} for a in att_result.scalars().all()]
+            
+            return {
+                "status": "online",
+                "users": users,
+                "employees": employees,
+                "salary_calculations": salary_calculations,
+                "attendance_records": attendance_records
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
+from fastapi import Request
+@app.post("/api/debug/log")
+async def debug_log(request: Request):
+    data = await request.json()
+    with open("frontend_crash.log", "a", encoding="utf-8") as f:
+        f.write(f"\n--- CRASH AT {datetime.utcnow()} ---\n")
+        f.write(str(data))
+        f.write("\n")
+    return {"status": "logged"}
+
+from app.utils.deps import get_current_user
+from fastapi import Depends
+from app.models.user import User
+
+@app.get("/api/debug/user")
+async def debug_user(current_user: User = Depends(get_current_user)):
     return {
-        "status": "online",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
+        "id": current_user.id,
+        "username": current_user.username,
+        "emp_id": current_user.emp_id,
+        "role": current_user.role.value
     }

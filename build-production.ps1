@@ -67,6 +67,34 @@ if (Test-Path "dist") {
     exit 1
 }
 
+# ── Build Employee App ─────────────────────────────────────────────────
+Write-Host ""
+Write-Host "[3/3] Building Employee App..." -ForegroundColor Cyan
+Set-Location -Path "$Root\employee-app"
+
+if (-Not (Test-Path "node_modules")) {
+    Write-Host "      Installing Employee dependencies..." -ForegroundColor Yellow
+    npm install
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[ERROR] Employee npm install failed." -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "      Running build..." -ForegroundColor Yellow
+npm run build
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Employee build failed." -ForegroundColor Red
+    exit 1
+}
+
+if (Test-Path "dist") {
+    Write-Host "      ✅ Employee App built successfully → employee-app\dist" -ForegroundColor Green
+} else {
+    Write-Host "[ERROR] Employee dist folder not created." -ForegroundColor Red
+    exit 1
+}
+
 # ── Done ───────────────────────────────────────────────────────────────
 Set-Location -Path $Root
 

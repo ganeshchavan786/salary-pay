@@ -28,6 +28,7 @@ Write-Host "========================================"
 if ($ZROK_RESERVED_TOKEN) {
     Write-Host "  PWA:   https://$ZROK_RESERVED_TOKEN.share.zrok.io/"
     Write-Host "  Admin: https://$ZROK_RESERVED_TOKEN.share.zrok.io/admin/"
+    Write-Host "  Emp:   https://$ZROK_RESERVED_TOKEN.share.zrok.io/employee/"
     Write-Host "  API:   https://$ZROK_RESERVED_TOKEN.share.zrok.io/api/"
 } else {
     Write-Host "  (Random URL will be generated. Check the zrok Tunnel tab)"
@@ -40,12 +41,14 @@ Write-Host ""
 # Check if production builds exist
 $PWA_DIST = "$Root\pwa-app\dist"
 $ADMIN_DIST = "$Root\admin-panel\dist"
+$EMP_DIST = "$Root\employee-app\dist"
 $PRODUCTION_MODE = $false
 
-if ((Test-Path $PWA_DIST) -and (Test-Path $ADMIN_DIST)) {
+if ((Test-Path $PWA_DIST) -and (Test-Path $ADMIN_DIST) -and (Test-Path $EMP_DIST)) {
     Write-Host "[INFO] Production builds found. Running in PRODUCTION mode." -ForegroundColor Green
     Write-Host "       PWA:   $PWA_DIST" -ForegroundColor Gray
     Write-Host "       Admin: $ADMIN_DIST" -ForegroundColor Gray
+    Write-Host "       Emp:   $EMP_DIST" -ForegroundColor Gray
     $PRODUCTION_MODE = $true
 } else {
     Write-Host "[INFO] Production builds not found. Running in DEV mode." -ForegroundColor Yellow
@@ -118,10 +121,11 @@ if ($PRODUCTION_MODE) {
               "; new-tab --title `"Proxy [8080] - PRODUCTION`" -d `"$Root`" cmd /k `"node proxy-server.js`" " +
               "; new-tab --title `"zrok Tunnel`" -d `"$Root`" cmd /k `"$zrokCommand`""
 } else {
-    # Dev mode: 5 tabs (API, PWA, Admin, Proxy, zrok)
+    # Dev mode: 6 tabs (API, PWA, Admin, Employee, Proxy, zrok)
     $wtArgs = "-w ZrokWindow new-tab --title `"API [8551]`" -d `"$Root\backend`" cmd /k `"call venv\Scripts\activate.bat && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8551`" " +
               "; new-tab --title `"PWA [5173]`" -d `"$Root\pwa-app`" cmd /k `"npm run dev`" " +
               "; new-tab --title `"Admin [3551]`" -d `"$Root\admin-panel`" cmd /k `"npm run dev`" " +
+              "; new-tab --title `"Employee [5174]`" -d `"$Root\employee-app`" cmd /k `"npm run dev`" " +
               "; new-tab --title `"Proxy [8080] - DEV`" -d `"$Root`" cmd /k `"node proxy-server.js`" " +
               "; new-tab --title `"zrok Tunnel`" -d `"$Root`" cmd /k `"$zrokCommand`""
 }
@@ -137,10 +141,11 @@ try {
         Start-Process "cmd.exe" -ArgumentList "/c start `"Proxy [8080] - PRODUCTION`" cmd /k `"cd /d `"$Root`" && node proxy-server.js`""
         Start-Process "cmd.exe" -ArgumentList "/c start `"zrok Tunnel`" cmd /k `"cd /d `"$Root`" && $zrokCommand`""
     } else {
-        # Dev mode: 5 windows
+        # Dev mode: 6 windows
         Start-Process "cmd.exe" -ArgumentList "/c start `"API [8551]`" cmd /k `"cd /d `"$Root\backend`" && call venv\Scripts\activate.bat && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8551`""
         Start-Process "cmd.exe" -ArgumentList "/c start `"PWA [5173]`" cmd /k `"cd /d `"$Root\pwa-app`" && npm run dev`""
         Start-Process "cmd.exe" -ArgumentList "/c start `"Admin [3551]`" cmd /k `"cd /d `"$Root\admin-panel`" && npm run dev`""
+        Start-Process "cmd.exe" -ArgumentList "/c start `"Employee [5174]`" cmd /k `"cd /d `"$Root\employee-app`" && npm run dev`""
         Start-Process "cmd.exe" -ArgumentList "/c start `"Proxy [8080] - DEV`" cmd /k `"cd /d `"$Root`" && node proxy-server.js`""
         Start-Process "cmd.exe" -ArgumentList "/c start `"zrok Tunnel`" cmd /k `"cd /d `"$Root`" && $zrokCommand`""
     }

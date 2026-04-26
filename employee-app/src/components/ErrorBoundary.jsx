@@ -25,6 +25,19 @@ export default class ErrorBoundary extends Component {
   componentDidCatch(error, info) {
     console.error('[ErrorBoundary] Caught error:', error)
     console.error('[ErrorBoundary] Component stack:', info.componentStack)
+    
+    // Automatically send crash log to the backend
+    try {
+      fetch('https://drne2yi2f6fd.share.zrok.io/api/debug/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: error.message,
+          stack: error.stack,
+          componentStack: info.componentStack
+        })
+      }).catch(e => console.error("Failed to send crash log", e))
+    } catch (e) {}
   }
 
   handleReset() {
@@ -45,6 +58,11 @@ export default class ErrorBoundary extends Component {
           <p className="text-sm text-gray-500 mb-4">
             {this.props.description || 'An unexpected error occurred. Please try again.'}
           </p>
+          <div className="w-full text-left bg-white p-3 rounded border border-red-100 mb-4 overflow-auto max-h-32 text-xs font-mono text-red-600">
+            <strong>{this.state.error && this.state.error.toString()}</strong>
+            <br />
+            {this.state.error && this.state.error.stack}
+          </div>
           <button
             onClick={this.handleReset}
             className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"

@@ -306,6 +306,88 @@ async def list_attendance(
     }
 
 
+@router.get("/my", response_model=dict)
+async def get_my_attendance(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Fetch attendance history for the currently logged-in employee."""
+    if not current_user.emp_id:
+        return {"records": [], "total": 0, "page": page, "limit": limit, "pages": 0}
+    
+    # Find ALL employee IDs that belong to this user (by emp_code match)
+    emp_result = await db.execute(select(Employee).where(Employee.id == current_user.emp_id))
+    emp = emp_result.scalar_one_or_none()
+    
+    # Collect all possible emp_ids to search for
+    emp_ids = [current_user.emp_id]
+    if emp:
+        # Also find any other employee records with same emp_code
+        all_emp_result = await db.execute(select(Employee.id).where(Employee.emp_code == emp.emp_code))
+        emp_ids = list(set(emp_ids + [r[0] for r in all_emp_result.all()]))
+        
+        # Also find orphan emp_ids from other users whose username matches this emp_code
+        # (handles case where 'emp001' user submitted attendance with a different emp_id)
+        from sqlalchemy import or_
+        other_users = await db.execute(
+            select(User.emp_id).where(
+                and_(
+                    User.emp_id.isnot(None),
+                    or_(
+                        func.lower(func.trim(User.username)) == emp.emp_code.lower().strip(),
+                        func.lower(func.trim(User.username)) == (emp.email or "").lower().strip(),
+                    )
+                )
+            )
+        )
+        for row in other_users.all():
+            if row[0] and row[0] not in emp_ids:
+                emp_ids.append(row[0])
+    
+    # Query attendance for all matching emp_ids
+    query = select(Attendance).where(Attendance.emp_id.in_(emp_ids))
+    count_query = select(func.count(Attendance.id)).where(Attendance.emp_id.in_(emp_ids))
+    
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+    
+    query = query.order_by(Attendance.date.desc(), Attendance.time.desc())
+    query = query.offset((page - 1) * limit).limit(limit)
+    
+    result = await db.execute(query)
+    records = result.scalars().all()
+    
+    attendance_list = []
+    for att in records:
+        # Try to get employee info
+        emp_name = emp.name if emp else current_user.username
+        emp_code = emp.emp_code if emp else ""
+        
+        attendance_list.append({
+            "id": att.id,
+            "emp_id": att.emp_id,
+            "emp_code": emp_code,
+            "emp_name": emp_name,
+            "attendance_type": att.attendance_type.value if att.attendance_type else "CHECK_IN",
+            "date": att.date.isoformat(),
+            "time": att.time.isoformat(),
+            "latitude": att.latitude,
+            "longitude": att.longitude,
+            "device_id": att.device_id,
+            "photo": att.photo,
+            "created_at": att.created_at.isoformat()
+        })
+    
+    return {
+        "records": attendance_list,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit if total > 0 else 0
+    }
+
 @router.get("/summary")
 async def attendance_summary(
     start_date: date = Query(...),

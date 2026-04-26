@@ -111,41 +111,82 @@ async def get_my_payslips(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Get own payslip history (for PWA)."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not current_user.emp_id:
+        logger.info(f"[PayslipsMy] No emp_id for user {current_user.username}")
         return {"payrolls": []}
+    
+    logger.info(f"[PayslipsMy] emp_id={current_user.emp_id}, username={current_user.username}")
+    
+    # First, get ALL salary calculations for this employee (no filter)
+    all_calc_result = await db.execute(
+        select(SalaryCalculation).where(
+            SalaryCalculation.employee_id == current_user.emp_id
+        )
+    )
+    all_calcs = all_calc_result.scalars().all()
+    logger.info(f"[PayslipsMy] Found {len(all_calcs)} total calculations for emp_id={current_user.emp_id}")
+    for c in all_calcs:
+        logger.info(f"  calc id={c.id}, status={c.status}, period_id={c.period_id}")
     
     # Get all SalaryCalculations for this employee, joined with PayrollPeriod
     result = await db.execute(
         select(SalaryCalculation, PayrollPeriod)
         .join(PayrollPeriod, SalaryCalculation.period_id == PayrollPeriod.id)
         .where(
-            and_(
-                SalaryCalculation.employee_id == current_user.emp_id,
-                SalaryCalculation.status != SalaryCalculationStatus.CANCELLED,
-            )
+            SalaryCalculation.employee_id == current_user.emp_id,
         )
-        .order_by(PayrollPeriod.year.desc(), PayrollPeriod.month.desc())
+        .order_by(PayrollPeriod.start_date.desc())
     )
     rows = result.all()
+    logger.info(f"[PayslipsMy] After JOIN with PayrollPeriod: {len(rows)} rows")
     
     payrolls = []
     for calc, period in rows:
+        status_val = calc.status.value if hasattr(calc.status, 'value') else str(calc.status)
+        if status_val == "cancelled":
+            continue  # Skip cancelled
+        
+        # Extract month/year from start_date
+        p_month = period.start_date.month if period.start_date else 1
+        p_year = period.start_date.year if period.start_date else 2026
+        
         payrolls.append({
-            "id": calc.id,  # We use the calculation ID as the 'payroll_id' for downloading
-            "month": period.month,
-            "year": period.year,
-            "status": calc.status.value,
-            "gross_salary": float(calc.gross_salary or 0),
-            "total_deductions": float(calc.total_deductions or 0),
-            "net_pay": float(calc.net_salary or 0),
+            "id": calc.id,
+            "month": p_month,
+            "year": p_year,
+            "period_name": period.period_name or f"Month-{p_month} {p_year}",
+            "status": status_val,
+            # Earnings
             "basic_salary": float(calc.basic_salary or 0),
             "hra": float(calc.hra or 0),
+            "special_allowance": float(calc.special_allowance or 0),
             "travel_allowance": float(calc.travel_allowance or 0),
-            "pt_deduction": float(calc.professional_tax or 0),
+            "medical_allowance": float(calc.medical_allowance or 0),
+            "overtime_amount": float(calc.overtime_amount or 0),
+            "arrears_amount": float(calc.arrears_amount or 0),
+            "gross_salary": float(calc.gross_salary or 0),
+            # Deductions
+            "pf_employee": float(calc.pf_employee or 0),
+            "esi_employee": float(calc.esi_employee or 0),
+            "professional_tax": float(calc.professional_tax or 0),
+            "income_tax": float(calc.income_tax or 0),
+            "loan_deductions": float(calc.loan_deductions or 0),
             "lop_deduction": float(calc.lop_deduction or 0),
-            "late_mark_deduction": 0, # Not in new model directly
+            "other_deductions": float(calc.other_deductions or 0),
+            "total_deductions": float(calc.total_deductions or 0),
+            # Net
+            "net_pay": float(calc.net_salary or 0),
+            # Attendance
+            "working_days": calc.working_days or 0,
+            "present_days": calc.present_days or 0,
+            "absent_days": calc.absent_days or 0,
+            "leave_days": calc.leave_days or 0,
         })
-        
+    
+    logger.info(f"[PayslipsMy] Returning {len(payrolls)} payrolls")
     return {"payrolls": payrolls}
 
 @router.get("/{payroll_id}/slip-download")

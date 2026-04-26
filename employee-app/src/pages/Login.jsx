@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { User, Lock, Loader2, MapPin, Fingerprint } from 'lucide-react'
 
 export default function Login() {
-  const [empCode, setEmpCode] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,14 +22,14 @@ export default function Login() {
     setLoading(true)
 
     try {
-      await login(empCode.trim().toUpperCase(), password)
+      await login(username.trim(), password)
       navigate('/')
     } catch (err) {
       const detail = err.response?.data?.detail
       if (typeof detail === 'string') {
         setError(detail)
       } else {
-        setError('Invalid Employee Code or Password. Please try again.')
+        setError('Invalid Email ID or Password. Please try again.')
       }
     } finally {
       setLoading(false)
@@ -55,7 +55,7 @@ export default function Login() {
       {/* Card */}
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8">
         <h2 className="text-xl font-bold text-gray-800 mb-1">Sign In</h2>
-        <p className="text-gray-400 text-sm mb-6">Use your Employee Code to log in</p>
+        <p className="text-gray-400 text-sm mb-6">Use your Email ID to log in</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -64,20 +64,20 @@ export default function Login() {
             </div>
           )}
 
-          {/* Employee Code */}
+          {/* Email ID */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Employee Code
+              Email ID
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                id="emp-code-input"
+                id="username-input"
                 type="text"
-                value={empCode}
-                onChange={(e) => setEmpCode(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition text-gray-800 uppercase placeholder:normal-case placeholder:text-gray-400"
-                placeholder="e.g. EMP001"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition text-gray-800"
+                placeholder="e.g. employee@company.com"
                 required
                 autoComplete="username"
               />

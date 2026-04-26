@@ -40,6 +40,19 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account is disabled"
         )
+        
+    if not user.emp_id and user.role != UserRole.ADMIN:
+        from app.models.employee import Employee
+        emp_result = await db.execute(select(Employee).where(
+            (Employee.emp_code == user.username) | 
+            (Employee.email == user.username)
+        ))
+        emp = emp_result.scalar_one_or_none()
+        if emp:
+            user.emp_id = emp.id
+            await db.commit()
+            await db.refresh(user)
+
     
     access_token = create_access_token(
         user_id=user.id,

@@ -289,7 +289,7 @@ export default function Employees() {
   // Login modal
   function openLoginModal(emp) {
     setLoginEmp(emp)
-    setLoginForm({ username: emp.emp_code.toLowerCase(), password: 'emp@123' })
+    setLoginForm({ username: emp.email || emp.emp_code, password: 'emp@123' })
     setShowLoginModal(true)
   }
   async function handleCreateLogin(e) {
@@ -626,8 +626,8 @@ export default function Employees() {
             <form onSubmit={handleCreateLogin} className="p-4 space-y-3">
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">Creates a login for the employee to use the PWA app.</div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
-                <input type="text" value={loginForm.username} onChange={e => setLoginForm(f => ({...f, username: e.target.value}))} className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500" required minLength={3} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username (Employee Code)</label>
+                <input type="text" value={loginForm.username} readOnly className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed rounded-lg text-sm outline-none" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>

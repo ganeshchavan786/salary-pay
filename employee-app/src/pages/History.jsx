@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Calendar, Clock, MapPin, RefreshCw, Loader2 } from 'lucide-react'
 import { attendanceDB } from '../db'
 import { checkAndSync, getLastSyncMeta } from '../services/syncService'
+import { attendanceApi } from '../services/api'
 
 export default function History() {
   const [records, setRecords] = useState([])
@@ -21,13 +22,29 @@ export default function History() {
   async function loadRecords() {
     setLoading(true)
     try {
-      const allRecords = await attendanceDB.getAll()
+      // Fetch from live API instead of local DB
+      const res = await attendanceApi.getMy({ limit: 100 })
+      
+      // Remote log the response
+      fetch('/api/debug/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'History_getMy', data: res.data })
+      }).catch(() => {})
+
+      const allRecords = res.data.records || res.data || []
+      
       const sorted = allRecords.sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
       )
       setRecords(sorted)
     } catch (error) {
       console.error('Error loading records:', error)
+      fetch('/api/debug/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'History_Error', msg: String(error), stack: error.stack })
+      }).catch(() => {})
     } finally {
       setLoading(false)
     }
