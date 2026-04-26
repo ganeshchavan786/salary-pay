@@ -8,8 +8,9 @@
  *   /redoc    → http://localhost:8551  (FastAPI ReDoc)
  *   /openapi* → http://localhost:8551  (FastAPI OpenAPI schema)
  *   /health   → http://localhost:8551  (Health check)
- *   /admin/*  → static dist/admin-panel (built files)
- *   /*        → http://localhost:5173  (PWA Vite dev server)
+ *   /admin/*     → static dist/admin-panel (built files)
+ *   /employee/* → http://localhost:5174  (Employee GPS+Selfie app)
+ *   /*           → http://localhost:5173  (PWA Vite dev server)
  */
 
 const http = require('http')
@@ -21,11 +22,13 @@ const path = require('path')
 const PORT = 8080
 const ADMIN_DIST = path.join(__dirname, 'admin-panel', 'dist')
 const PWA_DIST = path.join(__dirname, 'pwa-app', 'dist')
+const EMP_DIST = path.join(__dirname, 'employee-app', 'dist')
 
 const TARGETS = {
-  api:   'http://localhost:8551',
-  pwa:   'http://localhost:5173',
-  admin: 'http://localhost:3551',
+  api:      'http://localhost:8551',
+  pwa:      'http://localhost:5173',
+  admin:    'http://localhost:3551',
+  employee: 'http://localhost:5174',
 }
 
 // MIME types for static files
@@ -51,6 +54,9 @@ function serveStatic(req, res, urlPath, distPath) {
   }
   if (urlPath.startsWith('/face')) {
     filePath = urlPath.replace(/^\/face/, '') || '/'
+  }
+  if (urlPath.startsWith('/employee')) {
+    filePath = urlPath.replace(/^\/employee/, '') || '/'
   }
   if (filePath === '/' || filePath === '') filePath = '/index.html'
 
@@ -124,6 +130,13 @@ const server = http.createServer((req, res) => {
     return
   }
 
+  // /employee → /employee/ redirect
+  if (reqUrl === '/employee') {
+    res.writeHead(301, { Location: '/employee/' })
+    res.end()
+    return
+  }
+
   // Root URL / -> Serve landing.html
   if (reqUrl === '/') {
     const landingPath = path.join(__dirname, 'landing.html')
@@ -155,6 +168,19 @@ const server = http.createServer((req, res) => {
     req.headers['x-forwarded-for'] = req.socket.remoteAddress || 'unknown'
     req.headers['host'] = 'localhost:8551'
     proxy.web(req, res, { target: TARGETS.api })
+    return
+  }
+
+  // Employee app routes (/employee/*) → serve static if built, else proxy to dev server
+  if (reqUrl.startsWith('/employee/') || reqUrl === '/employee/') {
+    if (fs.existsSync(EMP_DIST)) {
+      serveStatic(req, res, reqUrl, EMP_DIST)
+    } else {
+      // Dev mode: proxy to Vite dev server
+      req.headers['x-forwarded-for'] = req.socket.remoteAddress || 'unknown'
+      req.headers['host'] = 'localhost:5174'
+      proxy.web(req, res, { target: TARGETS.employee })
+    }
     return
   }
 
