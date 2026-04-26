@@ -1,0 +1,17 @@
+# Minimal requirements for local testing
+fastapi
+uvicorn
+python-multipart
+sqlalchemy
+aiosqlite
+python-jose
+bcrypt
+pydantic
+pydantic-settings
+email-validator
+cryptography
+python-dotenv
+httpx
+slowapi
+fpdf2
+python-dateutil

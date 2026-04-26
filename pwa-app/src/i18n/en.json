@@ -1,0 +1,65 @@
+{
+  "nav": {
+    "attendance": "Attendance",
+    "history": "History",
+    "leaves": "Leaves",
+    "salary": "Salary",
+    "logout": "Logout"
+  },
+  "login": {
+    "title": "Face Attendance System",
+    "subtitle": "Offline-first biometric attendance",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signingIn": "Signing in..."
+  },
+  "attendance": {
+    "loading": "Loading...",
+    "loadingModels": "Loading face models...",
+    "loadingEmployees": "Loading employees...",
+    "startingCamera": "Starting camera...",
+    "scanning": "📷 Scanning for faces...",
+    "faceDetected": "👤 Face detected - Not recognized",
+    "blinkNow": "Blink Now!",
+    "turnLeft": "Turn face left",
+    "turnRight": "Turn face right",
+    "checkInMarked": "Check-In marked for {name}!",
+    "checkOutMarked": "Check-Out marked for {name}!",
+    "tooSoon": "⏳ {name} - Wait {min} minutes",
+    "error": "Error",
+    "cameraError": "Failed to access camera",
+    "refreshEmployees": "Refresh employee list"
+  },
+  "history": {
+    "title": "Attendance History",
+    "today": "Today",
+    "thisWeek": "This Week",
+    "thisMonth": "This Month",
+    "custom": "Custom",
+    "date": "Date",
+    "time": "Time",
+    "type": "Type",
+    "location": "Location",
+    "status": "Status",
+    "checkIn": "Check-In",
+    "checkOut": "Check-Out",
+    "synced": "Synced",
+    "pending": "Pending",
+    "noRecords": "No attendance records found",
+    "syncNow": "Sync Now",
+    "syncing": "Syncing...",
+    "lastSync": "Last sync: {time}"
+  },
+  "changePassword": {
+    "title": "Change Password",
+    "mustChange": "You must change the default admin password",
+    "oldPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "changeButton": "Change Password",
+    "changing": "Changing...",
+    "success": "Password changed successfully!",
+    "error": "Failed to change password"
+  }
+}

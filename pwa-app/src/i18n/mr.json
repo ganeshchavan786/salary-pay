@@ -1,0 +1,65 @@
+{
+  "nav": {
+    "attendance": "हजेरी",
+    "history": "इतिहास",
+    "leaves": "रजा",
+    "salary": "पगार",
+    "logout": "बाहेर पडा"
+  },
+  "login": {
+    "title": "चेहरा हजेरी प्रणाली",
+    "subtitle": "ऑफलाइन बायोमेट्रिक हजेरी",
+    "username": "वापरकर्तानाव",
+    "password": "पासवर्ड",
+    "signIn": "प्रवेश करा",
+    "signingIn": "प्रवेश होत आहे..."
+  },
+  "attendance": {
+    "loading": "लोड होत आहे...",
+    "loadingModels": "चेहरा मॉडेल लोड होत आहे...",
+    "loadingEmployees": "कर्मचारी लोड होत आहे...",
+    "startingCamera": "कॅमेरा सुरू होत आहे...",
+    "scanning": "📷 चेहरा शोधत आहे...",
+    "faceDetected": "👤 चेहरा सापडला - ओळखला नाही",
+    "blinkNow": "डोळे मिटा!",
+    "turnLeft": "चेहरा डावीकडे वळवा",
+    "turnRight": "चेहरा उजवीकडे वळवा",
+    "checkInMarked": "{name} - चेक-इन नोंदवला!",
+    "checkOutMarked": "{name} - चेक-आउट नोंदवला!",
+    "tooSoon": "⏳ {name} - {min} मिनिटे थांबा",
+    "error": "त्रुटी",
+    "cameraError": "कॅमेरा उघडता आला नाही",
+    "refreshEmployees": "कर्मचारी यादी ताजी करा"
+  },
+  "history": {
+    "title": "हजेरी इतिहास",
+    "today": "आज",
+    "thisWeek": "या आठवड्यात",
+    "thisMonth": "या महिन्यात",
+    "custom": "सानुकूल",
+    "date": "तारीख",
+    "time": "वेळ",
+    "type": "प्रकार",
+    "location": "स्थान",
+    "status": "स्थिती",
+    "checkIn": "चेक-इन",
+    "checkOut": "चेक-आउट",
+    "synced": "समक्रमित",
+    "pending": "प्रलंबित",
+    "noRecords": "कोणतेही हजेरी रेकॉर्ड सापडले नाहीत",
+    "syncNow": "आत्ता समक्रमित करा",
+    "syncing": "समक्रमित होत आहे...",
+    "lastSync": "शेवटचे समक्रमण: {time}"
+  },
+  "changePassword": {
+    "title": "पासवर्ड बदला",
+    "mustChange": "डीफॉल्ट admin पासवर्ड बदलणे आवश्यक आहे",
+    "oldPassword": "सध्याचा पासवर्ड",
+    "newPassword": "नवीन पासवर्ड",
+    "confirmPassword": "नवीन पासवर्ड पुष्टी करा",
+    "changeButton": "पासवर्ड बदला",
+    "changing": "बदलत आहे...",
+    "success": "पासवर्ड यशस्वीरित्या बदलला!",
+    "error": "पासवर्ड बदलता आला नाही"
+  }
+}

@@ -1,0 +1,29 @@
+# Environment
+.env
+venv/
+*.env
+
+# Database
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Testing
+.hypothesis/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

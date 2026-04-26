@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>UI Test Report — Admin Panel</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f5f9;color:#1e293b;padding:24px}
+    .hdr{background:linear-gradient(135deg,#1e293b,#334155);color:white;border-radius:16px;padding:32px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center}
+    .hdr h1{font-size:26px;font-weight:700;margin-bottom:4px}
+    .hdr p{color:#94a3b8;font-size:13px}
+    .ov{font-size:20px;font-weight:700;color:#10b981;background:rgba(255,255,255,.1);padding:12px 24px;border-radius:12px;border:2px solid #10b981}
+    .sum{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+    .card{background:white;border-radius:12px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    .cv{font-size:36px;font-weight:800;margin-bottom:4px}
+    .cl{font-size:13px;color:#64748b}
+    .t .cv{color:#3b82f6}.p .cv{color:#10b981}.f .cv{color:#ef4444}.r .cv{color:#8b5cf6}
+    .pw{background:white;border-radius:12px;padding:20px 24px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    .pl{display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;font-weight:600}
+    .pb{height:12px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+    .pf{height:100%;background:linear-gradient(90deg,#10b981,#34d399);border-radius:99px;width:100.0%}
+    .sc{background:white;border-radius:12px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);overflow:hidden}
+    .sh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+    .st{font-size:16px;font-weight:700}
+    .sb{color:white;font-size:13px;font-weight:600;padding:4px 12px;border-radius:99px}
+    .tt{width:100%;border-collapse:collapse}
+    .tt th{background:#f1f5f9;padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+    .tt td{padding:10px 16px;border-bottom:1px solid #f1f5f9;font-size:14px;vertical-align:top}
+    .pr{background:#f0fdf4}.fr{background:#fef2f2}
+    .n{color:#94a3b8;font-size:12px;width:32px}
+    .tn{font-weight:500}
+    .ts{width:100px}
+    .td{color:#94a3b8;font-size:12px;width:70px}
+    .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700}
+    .badge.pass{background:#dcfce7;color:#16a34a}
+    .badge.fail{background:#fee2e2;color:#dc2626}
+    .err{font-family:monospace;font-size:11px;color:#dc2626;background:#fef2f2;padding:4px 8px;border-radius:4px;white-space:pre-wrap;max-width:400px}
+    .ftr{text-align:center;color:#94a3b8;font-size:13px;margin-top:32px;padding:16px}
+    @media(max-width:768px){.sum{grid-template-columns:repeat(2,1fr)}.hdr{flex-direction:column;gap:16px;text-align:center}}
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div>
+      <h1>🖥️ UI Test Report — Admin Panel</h1>
+      <p>Face Recognition Attendance PWA · React + Vitest</p>
+      <p style="margin-top:6px;color:#cbd5e1">Generated: 23 April 2026, 05:00 PM</p>
+    </div>
+    <div class="ov">ALL PASS ✅</div>
+  </div>
+  <div class="sum">
+    <div class="card t"><div class="cv">92</div><div class="cl">Total Tests</div></div>
+    <div class="card p"><div class="cv">92</div><div class="cl">Passed ✅</div></div>
+    <div class="card f"><div class="cv">0</div><div class="cl">Failed ❌</div></div>
+    <div class="card r"><div class="cv">100.0%</div><div class="cl">Pass Rate</div></div>
+  </div>
+  <div class="pw">
+    <div class="pl"><span>Test Progress</span><span>92 / 92 tests passing</span></div>
+    <div class="pb"><div class="pf"></div></div>
+  </div>
+  
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">🔐 Section 1: Login Page</div>
+        <div class="sb" style="background:#10b981">8/8 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">renders login page with title, inputs and button</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">795ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">shows subtitle text</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">60ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">username input accepts text</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">33ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">password input accepts text</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">22ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">calls login with correct credentials on submit</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">150ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">shows error message on invalid credentials</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">124ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">shows generic error when no detail in response</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">183ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">button is disabled while loading</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">241ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">📅 Section 2: Attendance Page</div>
+        <div class="sb" style="background:#10b981">10/10 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">renders page title</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">176ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">renders all 4 view mode tabs</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">57ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">Raw tab is active by default</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">36ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">clicking HR Mode tab switches view</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">100ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">HR Mode shows Manual Entry button</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">89ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">HR Mode shows Bulk Attendance button</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">94ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">clicking Manual Entry opens modal</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">117ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">Manual Entry modal has required fields</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">125ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">9</td>
+          <td class="tn">Manual Entry modal closes on Cancel</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">155ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">10</td>
+          <td class="tn">Raw tab shows Export CSV button</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">27ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">🏖️ Section 3: Leave Management</div>
+        <div class="sb" style="background:#10b981">11/11 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">renders page title</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">257ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">renders all 3 tabs</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">141ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">shows stats cards (Pending, Approved, Rejected, LWP)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">52ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">Apply Leave button is visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">96ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">clicking Apply Leave opens modal</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">268ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">Apply Leave modal has leave type options</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">716ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">leave list shows pending and approved leaves</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">324ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">leave type badges visible (CL, LWP)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">31ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">9</td>
+          <td class="tn">status badges visible (pending, approved)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">80ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">10</td>
+          <td class="tn">Export CSV button visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">88ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">11</td>
+          <td class="tn">filter dropdowns visible (Status, Type)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">101ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">💼 Section 4: Payhead Config</div>
+        <div class="sb" style="background:#10b981">9/9 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">renders page title</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">142ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">shows employee selector dropdown</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">30ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">employee dropdown loads employees</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">70ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">selecting employee shows salary structure form</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">764ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">statutory deduction checkboxes visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">121ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">tax regime radio buttons visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">169ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">Save Configuration button visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">139ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">salary preview shows Gross CTC</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">283ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">9</td>
+          <td class="tn">basic salary input accepts number</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">398ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">💰 Section 5: Salary Calculation</div>
+        <div class="sb" style="background:#10b981">11/11 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">renders page title</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">117ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">shows Payroll Period label</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">28ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">payroll period dropdown loads periods</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">49ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">Refresh button visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">27ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">Calculate All button visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">23ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">shows calculation results table with employees</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">111ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">shows employee codes in results</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">74ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">shows calculation status badges</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">55ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">9</td>
+          <td class="tn">shows summary cards (Gross, Deductions, Net)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">101ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">10</td>
+          <td class="tn">Approve button visible for CALCULATED status</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">83ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">11</td>
+          <td class="tn">shows result count in header</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">27ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">👥 Section 6: Payhead Real Employees</div>
+        <div class="sb" style="background:#10b981">13/13 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">A1: all 8 real employees load in dropdown</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">473ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">A2: Ganesh Chavan (EMP001) visible in dropdown</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">908ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">A3: Rahul Sharma (VIP-2026-001) visible in dropdown</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">32ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">B1: selecting Rahul Sharma loads his salary config (Basic ₹27,000)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">350ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">B2: selecting Vijay Jadhav loads his salary config (Basic ₹18,000)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">242ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">B3: selecting Deepak Mali loads his salary config (Basic ₹15,000)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">211ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">C1: Rahul Sharma salary preview shows correct Gross CTC</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">142ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">C2: Vijay Jadhav salary preview — Basic ₹18,000, HRA 40% = ₹7,200</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">141ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">9</td>
+          <td class="tn">C3: Deepak Mali — ESI applicable (gross < ₹21,000)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">2ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">10</td>
+          <td class="tn">D1: PF checkbox is checked by default</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">313ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">11</td>
+          <td class="tn">D2: unchecking PF updates form state</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">320ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">12</td>
+          <td class="tn">E1: Save Configuration calls API with correct employee_id</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">276ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">13</td>
+          <td class="tn">E2: Save Configuration sends correct basic_salary</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">200ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">💳 Section 7: Deduction Management</div>
+        <div class="sb" style="background:#10b981">12/12 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">A1: page renders with title</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">189ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">A2: employee dropdown loads real employees</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">934ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">B1: selecting employee shows Add Deduction button</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">237ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">B2: clicking Add Deduction opens modal</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">228ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">C1: deduction type dropdown has LOAN, ADVANCE, FINE, CUSTOM</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">170ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">C2: Total Amount and EMI fields visible in modal</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">268ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">D1: Rahul Sharma has 2 active deductions (LOAN + ADVANCE)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">215ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">D2: deduction shows Total, EMI, Remaining amounts</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">112ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">9</td>
+          <td class="tn">D3: LOAN and ADVANCE type badges visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">205ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">10</td>
+          <td class="tn">D4: ACTIVE status badge visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">155ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">11</td>
+          <td class="tn">E1: Pause button visible for ACTIVE deductions</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">147ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">12</td>
+          <td class="tn">E2: clicking Pause calls API</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">168ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sh" style="border-left:5px solid #10b981">
+        <div class="st">test_08_sanjay_patil_e2e.test.jsx</div>
+        <div class="sb" style="background:#10b981">18/18 passed</div>
+      </div>
+      <table class="tt">
+        <thead><tr><th>#</th><th>Test</th><th>Status</th><th>Time</th><th>Error</th></tr></thead>
+        <tbody>
+        <tr class="pr">
+          <td class="n">1</td>
+          <td class="tn">A1: Sanjay Patil (TEST-001) visible in Payhead Config dropdown</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">1110ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">2</td>
+          <td class="tn">A2: selecting Sanjay loads Basic Salary ₹19,200</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">509ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">3</td>
+          <td class="tn">A3: HRA percentage is 40%</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">264ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">4</td>
+          <td class="tn">A4: Special Allowance ₹5,000 loaded</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">259ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">5</td>
+          <td class="tn">A5: PF checkbox is checked (PF applicable)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">190ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">6</td>
+          <td class="tn">A6: ESI checkbox is NOT checked (gross > ₹21,000)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">191ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">7</td>
+          <td class="tn">A7: Salary Preview shows Gross CTC</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">173ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">8</td>
+          <td class="tn">A8: Save Configuration calls API with Sanjay employee_id</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">223ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">9</td>
+          <td class="tn">B1: Sanjay Patil visible in Deduction Management dropdown</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">131ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">10</td>
+          <td class="tn">B2: selecting Sanjay shows ADVANCE deduction</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">151ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">11</td>
+          <td class="tn">B3: deduction description shows correctly</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">62ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">12</td>
+          <td class="tn">B4: deduction amounts visible (Total ₹8,000, EMI ₹2,000)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">124ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">13</td>
+          <td class="tn">B5: ACTIVE status badge visible</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">140ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">14</td>
+          <td class="tn">C1: Gross CTC calculation is correct (₹36,880)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">1ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">15</td>
+          <td class="tn">C2: PF deduction = ₹1,800 (12% of ₹15,000 cap)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">1ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">16</td>
+          <td class="tn">C3: ESI = ₹0 (gross ₹36,880 > ₹21,000 threshold)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">1ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">17</td>
+          <td class="tn">C4: PT = ₹200 (Maharashtra, gross ≥ ₹10,000)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">0ms</td>
+          <td></td>
+        </tr>
+        <tr class="pr">
+          <td class="n">18</td>
+          <td class="tn">C5: Net Salary = ₹32,880 (Gross - PF - PT - Advance EMI)</td>
+          <td class="ts"><span class="badge pass">✅ PASS</span></td>
+          <td class="td">0ms</td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+  <div class="ftr">Admin Panel UI Tests · 23 April 2026, 05:00 PM</div>
+</body>
+</html>

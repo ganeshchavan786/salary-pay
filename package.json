@@ -1,0 +1,12 @@
+{
+  "name": "face-attendance-proxy",
+  "version": "1.0.0",
+  "description": "Node.js reverse proxy for ngrok deployment",
+  "main": "proxy-server.js",
+  "scripts": {
+    "proxy": "node proxy-server.js"
+  },
+  "dependencies": {
+    "http-proxy": "1.18.1"
+  }
+}
