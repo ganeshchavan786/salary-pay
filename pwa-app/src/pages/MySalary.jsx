@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { DollarSign, Download, Loader2 } from 'lucide-react'
+import { DollarSign, Download, Loader2, Eye } from 'lucide-react'
 import { payrollApi } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -27,13 +27,39 @@ export default function MySalary() {
     setDownloading(id)
     try {
       const r = await payrollApi.downloadSlip(id)
-      const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }))
+      const blob = new Blob([r.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      
       const a = document.createElement('a')
+      a.style.display = 'none'
       a.href = url
       a.download = `salary-slip-${MONTHS[month-1]}-${year}.pdf`
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
-    } catch { toast.error('Failed to download slip') }
+      
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 2000)
+      
+      toast.success('Download started')
+    } catch (err) { 
+      console.error('Download error:', err)
+      toast.error('Failed to download slip') 
+    }
+    finally { setDownloading(null) }
+  }
+
+  async function handleView(id) {
+    setDownloading(id + '_view')
+    try {
+      const r = await payrollApi.downloadSlip(id)
+      const blob = new Blob([r.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch (err) { 
+      toast.error('Failed to open slip') 
+    }
     finally { setDownloading(null) }
   }
 
@@ -71,14 +97,24 @@ export default function MySalary() {
                     {p.status}
                   </span>
                 </div>
-                <button
-                  onClick={() => handleDownload(p.id, p.month, p.year)}
-                  disabled={downloading === p.id}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 disabled:opacity-50"
-                >
-                  {downloading === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  Slip
-                </button>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleView(p.id)}
+                      disabled={downloading === p.id + '_view'}
+                      className="flex items-center justify-center p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                      title="View PDF"
+                    >
+                      {downloading === p.id + '_view' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => handleDownload(p.id, p.month, p.year)}
+                      disabled={downloading === p.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 disabled:opacity-50"
+                    >
+                      {downloading === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                      Slip
+                    </button>
+                  </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center">

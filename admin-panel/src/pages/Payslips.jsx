@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { Download, Eye, FileText, Printer } from 'lucide-react'
 import { api } from '../services/api'
 import toast from 'react-hot-toast'
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 export default function Payslips() {
   const [periods, setPeriods] = useState([])
@@ -46,218 +44,60 @@ export default function Payslips() {
     }
   }
 
-  function generatePDF(payslip) {
-    const doc = new jsPDF()
-    
-    // ═══════════════════════════════════════════════════════════
-    // HEADER - Blue gradient background
-    // ═══════════════════════════════════════════════════════════
-    doc.setFillColor(37, 99, 235) // blue-600
-    doc.rect(0, 0, 210, 45, 'F')
-    
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(24)
-    doc.setFont('helvetica', 'bold')
-    doc.text('SALARY SLIP', 105, 18, { align: 'center' })
-    
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Face Recognition Attendance System', 105, 27, { align: 'center' })
-    
-    doc.setFontSize(10)
-    doc.setTextColor(191, 219, 254) // blue-200
-    doc.text(`Period: ${payslip.period_name || 'N/A'}`, 105, 35, { align: 'center' })
-    
-    // ═══════════════════════════════════════════════════════════
-    // EMPLOYEE INFO CARD
-    // ═══════════════════════════════════════════════════════════
-    const cardY = 55
-    
-    // Card background
-    doc.setFillColor(249, 250, 251) // gray-50
-    doc.roundedRect(15, cardY, 180, 28, 2, 2, 'F')
-    
-    // Card border
-    doc.setDrawColor(229, 231, 235) // gray-200
-    doc.setLineWidth(0.3)
-    doc.roundedRect(15, cardY, 180, 28, 2, 2, 'S')
-    
-    doc.setTextColor(107, 114, 128) // gray-500
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
-    
-    // Left column labels
-    doc.text('Employee Name', 20, cardY + 6)
-    doc.text('Employee Code', 20, cardY + 16)
-    
-    // Left column values
-    doc.setTextColor(31, 41, 55) // gray-800
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text(payslip.employee.name || 'N/A', 20, cardY + 11)
-    doc.text(payslip.employee.emp_code || 'N/A', 20, cardY + 21)
-    
-    // Right column labels
-    doc.setTextColor(107, 114, 128)
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Department', 110, cardY + 6)
-    doc.text('Designation', 110, cardY + 16)
-    
-    // Right column values
-    doc.setTextColor(31, 41, 55)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text(payslip.employee.department || 'N/A', 110, cardY + 11)
-    doc.text(payslip.employee.designation || 'N/A', 110, cardY + 21)
-    
-    // ═══════════════════════════════════════════════════════════
-    // EARNINGS & DEDUCTIONS TABLES
-    // ═══════════════════════════════════════════════════════════
-    const tablesY = cardY + 38
-    
-    // Earnings Table (Left)
-    const earningsData = payslip.earnings.map(e => [
-      e.label,
-      `₹ ${e.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    ])
-    
-    autoTable(doc, {
-      startY: tablesY,
-      head: [['EARNINGS', 'AMOUNT']],
-      body: earningsData,
-      theme: 'plain',
-      headStyles: {
-        fillColor: [219, 234, 254], // blue-100
-        textColor: [30, 64, 175], // blue-800
-        fontSize: 9,
-        fontStyle: 'bold',
-        halign: 'left',
-        cellPadding: 3
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: [31, 41, 55],
-        cellPadding: 2.5
-      },
-      columnStyles: {
-        0: { cellWidth: 50, fontStyle: 'normal' },
-        1: { cellWidth: 35, halign: 'right', fontStyle: 'bold', textColor: [31, 41, 55] }
-      },
-      margin: { left: 15, right: 105 },
-      tableWidth: 90,
-      tableLineColor: [229, 231, 235],
-      tableLineWidth: 0.3,
-    })
-    
-    // Deductions Table (Right)
-    const deductionsData = payslip.deductions.map(d => [
-      d.label,
-      `₹ ${d.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    ])
-    
-    autoTable(doc, {
-      startY: tablesY,
-      head: [['DEDUCTIONS', 'AMOUNT']],
-      body: deductionsData,
-      theme: 'plain',
-      headStyles: {
-        fillColor: [254, 226, 226], // red-100
-        textColor: [153, 27, 27], // red-900
-        fontSize: 9,
-        fontStyle: 'bold',
-        halign: 'left',
-        cellPadding: 3
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: [31, 41, 55],
-        cellPadding: 2.5
-      },
-      columnStyles: {
-        0: { cellWidth: 50, fontStyle: 'normal' },
-        1: { cellWidth: 35, halign: 'right', fontStyle: 'bold', textColor: [31, 41, 55] }
-      },
-      margin: { left: 105, right: 15 },
-      tableWidth: 90,
-      tableLineColor: [229, 231, 235],
-      tableLineWidth: 0.3,
-    })
-    
-    // ═══════════════════════════════════════════════════════════
-    // SUMMARY SECTION
-    // ═══════════════════════════════════════════════════════════
-    const summaryY = Math.max(
-      doc.lastAutoTable.finalY || tablesY + 80,
-      tablesY + 80
-    ) + 12
-    
-    // Summary card background with gradient effect
-    doc.setFillColor(249, 250, 251) // gray-50
-    doc.roundedRect(15, summaryY, 180, 42, 2, 2, 'F')
-    
-    // Summary card border
-    doc.setDrawColor(209, 213, 219) // gray-300
-    doc.setLineWidth(0.5)
-    doc.roundedRect(15, summaryY, 180, 42, 2, 2, 'S')
-    
-    // Gross Salary
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(75, 85, 99) // gray-600
-    doc.text('Gross Salary', 20, summaryY + 8)
-    
-    doc.setFontSize(12)
-    doc.setTextColor(31, 41, 55) // gray-800
-    doc.text(`₹ ${payslip.gross_salary.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, summaryY + 8, { align: 'right' })
-    
-    // Total Deductions
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(75, 85, 99)
-    doc.text('Total Deductions', 20, summaryY + 18)
-    
-    doc.setFontSize(12)
-    doc.setTextColor(220, 38, 38) // red-600
-    doc.text(`- ₹ ${payslip.total_deductions.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, summaryY + 18, { align: 'right' })
-    
-    // Divider line
-    doc.setDrawColor(209, 213, 219)
-    doc.setLineWidth(0.5)
-    doc.line(20, summaryY + 23, 190, summaryY + 23)
-    
-    // Net Salary (highlighted)
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(31, 41, 55)
-    doc.text('NET SALARY', 20, summaryY + 33)
-    
-    doc.setFontSize(16)
-    doc.setTextColor(22, 163, 74) // green-600
-    doc.text(`₹ ${payslip.net_salary.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, summaryY + 33, { align: 'right' })
-    
-    // ═══════════════════════════════════════════════════════════
-    // FOOTER
-    // ═══════════════════════════════════════════════════════════
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'italic')
-    doc.setTextColor(156, 163, 175) // gray-400
-    doc.text('This is a computer-generated payslip and does not require a signature.', 105, 270, { align: 'center' })
-    doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`, 105, 276, { align: 'center' })
-    
-    // Save
-    const fileName = `Payslip_${payslip.employee.emp_code}_${(payslip.period_name || 'Unknown').replace(/\s+/g, '_')}.pdf`
-    doc.save(fileName)
-    toast.success('Payslip downloaded successfully!')
+  /**
+   * PDF Generation Note:
+   * This frontend-based PDF generation (jsPDF) is now DEPRECATED.
+   * We have migrated to Backend-based PDF generation for better aesthetics and consistency.
+   * 
+   * [LEGACY CODE - FOR REFERENCE ONLY]
+   * function generatePDF(payslip) {
+   *   const doc = new jsPDF()
+   *   doc.text('SALARY SLIP', 105, 18, { align: 'center' })
+   *   // ... (rest of old logic was here)
+   * }
+   */
+  async function handleDownload(payslip) {
+    const calcId = payslip.id // Note: bulk-generate returns calculation objects
+    try {
+      toast.loading('Generating PDF...', { id: 'pdf' })
+      const r = await api.get(`/v1/payslips/admin/${calcId}/slip-download`, { responseType: 'blob' })
+      const blob = new Blob([r.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = `salary-slip-${payslip.employee?.emp_code || 'EMP'}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 2000)
+      
+      toast.success('Downloaded successfully', { id: 'pdf' })
+    } catch (err) {
+      toast.error('Failed to generate PDF', { id: 'pdf' })
+    }
+  }
+
+  async function handleViewBackendPDF(payslip) {
+    const calcId = payslip.id
+    try {
+      toast.loading('Opening PDF...', { id: 'view-pdf' })
+      const r = await api.get(`/v1/payslips/admin/${calcId}/slip-download`, { responseType: 'blob' })
+      const blob = new Blob([r.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      toast.dismiss('view-pdf')
+    } catch (err) {
+      toast.error('Failed to open PDF', { id: 'view-pdf' })
+    }
   }
 
   function viewPayslip(payslip) {
     setSelectedPayslip(payslip)
     setShowPreview(true)
-  }
-
-  function printPayslip(payslip) {
-    generatePDF(payslip)
   }
 
   return (
@@ -340,18 +180,18 @@ export default function Payslips() {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => generatePDF(p)}
+                          onClick={() => handleViewBackendPDF(p)}
+                          className="p-1.5 text-purple-600 hover:bg-purple-50 rounded"
+                          title="View Backend PDF"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDownload(p)}
                           className="p-1.5 text-green-600 hover:bg-green-50 rounded"
                           title="Download PDF"
                         >
                           <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => printPayslip(p)}
-                          className="p-1.5 text-gray-600 hover:bg-gray-50 rounded"
-                          title="Print"
-                        >
-                          <Printer className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -469,7 +309,7 @@ export default function Payslips() {
               {/* Actions */}
               <div className="mt-6 flex gap-3">
                 <button
-                  onClick={() => generatePDF(selectedPayslip)}
+                  onClick={() => handleDownload(selectedPayslip)}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
                 >
                   <Download className="w-5 h-5" /> Download PDF

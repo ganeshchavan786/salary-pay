@@ -8,7 +8,7 @@ from app.models.salary_calculation import SalaryCalculation, SalaryCalculationSt
 from app.models.payroll_period import PayrollPeriod
 from app.models.employee import Employee
 from app.models.user import User
-from app.utils.deps import get_current_user
+from app.utils.deps import get_current_user, require_admin
 from app.utils.payslip_generator import payslip_generator
 
 router = APIRouter(tags=["Payslips"])
@@ -63,6 +63,12 @@ def _build_employee_dict(employee: Employee) -> Dict:
         "emp_code": employee.emp_code,
         "department": employee.department or "",
         "designation": employee.designation or "",
+        "aadhaar_no": employee.aadhaar_no or "-",
+        "pan_no": employee.pan_no or "-",
+        "bank_name": employee.bank_name or "-",
+        "account_no": employee.account_no or "-",
+        "ifsc_code": employee.ifsc_code or "-",
+        "joining_date": employee.joining_date or "-",
     }
 
 
@@ -99,10 +105,12 @@ async def get_payslip(
     salary_calc_dict = _build_salary_calc_dict(calc, period)
     employee_dict = _build_employee_dict(employee)
 
-    return payslip_generator.generate_payslip_data(
+    payslip_data = payslip_generator.generate_payslip_data(
         employee=employee_dict,
         salary_calc=salary_calc_dict,
     )
+    payslip_data["id"] = calc.id
+    return payslip_data
 
 
 @router.get("/my")
@@ -223,30 +231,32 @@ async def download_my_slip(
     # Wait, the old download_salary_slip used pdf_service.generate_salary_slip(payroll_dict, employee_dict)
     
     payroll_dict = {
-        "month": period.month,
-        "year": period.year,
-        "working_days": 30, # dummy
-        "present_days": 30, # dummy
-        "lop_days": 0,
-        "half_days": 0,
-        "ot_hours": 0,
-        "gross_salary": salary_calc_dict["gross_salary"],
-        "basic_salary": salary_calc_dict["basic_salary"],
-        "hra": salary_calc_dict["hra"],
-        "travel_allowance": salary_calc_dict["travel_allowance"],
-        "special_allowance": salary_calc_dict["special_allowance"],
-        "pt_deduction": salary_calc_dict["professional_tax"],
-        "pf_deduction": salary_calc_dict["pf_employee"],
-        "lop_deduction": salary_calc_dict["lop_deduction"],
-        "late_mark_deduction": 0,
-        "total_deductions": salary_calc_dict["total_deductions"],
-        "net_pay": salary_calc_dict["net_salary"],
+        "month": period.start_date.month,
+        "year": period.start_date.year,
+        "gross_salary": float(salary_calc_dict.get("gross_salary") or 0),
+        "basic_salary": float(salary_calc_dict.get("basic_salary") or 0),
+        "hra": float(salary_calc_dict.get("hra") or 0),
+        "special_allowance": float(salary_calc_dict.get("special_allowance") or 0),
+        "travel_allowance": float(salary_calc_dict.get("travel_allowance") or 0),
+        "medical_allowance": float(salary_calc_dict.get("medical_allowance") or 0),
+        "overtime_amount": float(salary_calc_dict.get("overtime_amount") or 0),
+        "arrears_amount": float(salary_calc_dict.get("arrears_amount") or 0),
+        "income_tax": float(salary_calc_dict.get("income_tax") or 0),
+        "pf_deduction": float(salary_calc_dict.get("pf_employee") or 0),
+        "pt_deduction": float(salary_calc_dict.get("professional_tax") or 0),
+        "esi_employee": float(salary_calc_dict.get("esi_employee") or 0),
+        "loan_deductions": float(salary_calc_dict.get("loan_deductions") or 0),
+        "advance_deductions": float(salary_calc_dict.get("advance_deductions") or 0),
+        "lop_deduction": float(salary_calc_dict.get("lop_deduction") or 0),
+        "total_deductions": float(salary_calc_dict.get("total_deductions") or 0),
+        "net_pay": float(salary_calc_dict.get("net_salary") or 0),
     }
     
     from fastapi import Response
     pdf_bytes = pdf_service.generate_salary_slip(payroll_dict, employee_dict)
-    month_name = calendar.month_abbr[period.month]
-    filename = f"salary-slip-{employee.emp_code}-{month_name}-{period.year}.pdf"
+    month_idx = int(period.start_date.month or 1)
+    month_name = calendar.month_abbr[month_idx]
+    filename = f"salary-slip-{employee.emp_code}-{month_name}-{period.start_date.year}.pdf"
 
     return Response(
         content=pdf_bytes,
@@ -254,6 +264,69 @@ async def download_my_slip(
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
+@router.get("/admin/{payroll_id}/slip-download")
+async def admin_download_slip(
+    payroll_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Admin endpoint to download any slip by its calculation ID."""
+    result = await db.execute(
+        select(SalaryCalculation, PayrollPeriod, Employee)
+        .join(PayrollPeriod, SalaryCalculation.period_id == PayrollPeriod.id)
+        .join(Employee, SalaryCalculation.employee_id == Employee.id)
+        .where(SalaryCalculation.id == payroll_id)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Payslip not found.")
+        
+    calc, period, employee = row
+    salary_calc_dict = _build_salary_calc_dict(calc, period)
+    employee_dict = _build_employee_dict(employee)
+    
+    import calendar
+    from app.services import pdf_service
+    
+    try:
+        payroll_dict = {
+            "month": period.start_date.month,
+            "year": period.start_date.year,
+            "gross_salary": float(salary_calc_dict.get("gross_salary") or 0),
+            "basic_salary": float(salary_calc_dict.get("basic_salary") or 0),
+            "hra": float(salary_calc_dict.get("hra") or 0),
+            "special_allowance": float(salary_calc_dict.get("special_allowance") or 0),
+            "travel_allowance": float(salary_calc_dict.get("travel_allowance") or 0),
+            "medical_allowance": float(salary_calc_dict.get("medical_allowance") or 0),
+            "overtime_amount": float(salary_calc_dict.get("overtime_amount") or 0),
+            "arrears_amount": float(salary_calc_dict.get("arrears_amount") or 0),
+            "income_tax": float(salary_calc_dict.get("income_tax") or 0),
+            "pf_deduction": float(salary_calc_dict.get("pf_employee") or 0),
+            "pt_deduction": float(salary_calc_dict.get("professional_tax") or 0),
+            "esi_employee": float(salary_calc_dict.get("esi_employee") or 0),
+            "loan_deductions": float(salary_calc_dict.get("loan_deductions") or 0),
+            "advance_deductions": float(salary_calc_dict.get("advance_deductions") or 0),
+            "lop_deduction": float(salary_calc_dict.get("lop_deduction") or 0),
+            "total_deductions": float(salary_calc_dict.get("total_deductions") or 0),
+            "net_pay": float(salary_calc_dict.get("net_salary") or 0),
+        }
+        
+        from fastapi import Response
+        pdf_bytes = pdf_service.generate_salary_slip(payroll_dict, employee_dict)
+        month_idx = int(period.start_date.month or 1)
+        month_name = calendar.month_abbr[month_idx]
+        filename = f"salary-slip-{employee.emp_code}-{month_name}-{period.start_date.year}.pdf"
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        with open("router_error.log", "w") as f:
+            import traceback
+            f.write(str(e) + "\n" + traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 @router.post("/bulk-generate/{period_id}")
 async def bulk_generate_payslips(
     period_id: str,
@@ -290,6 +363,7 @@ async def bulk_generate_payslips(
             employee=employee_dict,
             salary_calc=salary_calc_dict,
         )
+        payslip_data["id"] = calc.id # Add ID for frontend download
         payslips.append(payslip_data)
 
     return {

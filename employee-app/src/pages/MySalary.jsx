@@ -63,13 +63,45 @@ export default function MySalary() {
     setDownloading(id)
     try {
       const r = await payrollApi.downloadSlip(id)
-      const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }))
+      const blob = new Blob([r.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      
+      // For mobile, sometimes we need to open in a new tab if download fails
+      // We'll try to download first
       const a = document.createElement('a')
+      a.style.display = 'none'
       a.href = url
       a.download = `salary-slip-${MONTHS[month-1]}-${year}.pdf`
+      
+      // Some mobile browsers need the element in the DOM
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
-    } catch { toast.error('Failed to download slip') }
+      
+      // Wait a bit before cleanup
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 2000)
+      
+      toast.success('Download started')
+    } catch (err) { 
+      console.error('Download error:', err)
+      toast.error('Failed to download slip') 
+    }
+    finally { setDownloading(null) }
+  }
+
+  async function handleView(id) {
+    setDownloading(id + '_view')
+    try {
+      const r = await payrollApi.downloadSlip(id)
+      const blob = new Blob([r.data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      // Note: we can't easily revokeObjectURL here because the new window needs it
+    } catch (err) { 
+      toast.error('Failed to open slip') 
+    }
     finally { setDownloading(null) }
   }
 
@@ -134,14 +166,24 @@ export default function MySalary() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDownload(p.id, p.month, p.year)}
-                      disabled={downloading === p.id}
-                      className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
-                    >
-                      {downloading === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                      Slip
-                    </button>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => handleView(p.id)}
+                        disabled={downloading === p.id + '_view'}
+                        className="flex items-center justify-center p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 disabled:opacity-50 transition-colors shadow-sm"
+                        title="View PDF"
+                      >
+                        {downloading === p.id + '_view' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => handleDownload(p.id, p.month, p.year)}
+                        disabled={downloading === p.id}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                      >
+                        {downloading === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        Slip
+                      </button>
+                    </div>
                   </div>
 
                   {/* Summary Cards */}
