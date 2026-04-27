@@ -360,3 +360,8 @@ export const statutoryRatesApi = {
 export const installmentsApi = {
   getByEmployee: (employeeId) => api.get(`/v1/deductions/employee/${employeeId}/installments`),
 }
+
+export const companyApi = {
+  get: () => api.get('/v1/company/'),
+  update: (data) => api.put('/v1/company/', data),
+}

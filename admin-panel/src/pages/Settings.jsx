@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2, Mail, Settings as SettingsIcon, Send, ShieldCheck, Server, TrendingUp } from 'lucide-react'
-import { settingsApi } from '../services/api'
+import { 
+  Save, Loader2, Mail, Settings as SettingsIcon, Send, 
+  ShieldCheck, Server, TrendingUp, Building2, Landmark 
+} from 'lucide-react'
+import { settingsApi, companyApi } from '../services/api'
 import toast from 'react-hot-toast'
 
 // Toggle switch component
@@ -42,7 +45,7 @@ function Section({ title, description, children, icon: Icon }) {
 }
 
 // Field wrapper
-function Field({ label, error, children,理论, fullWidth, hint }) {
+function Field({ label, error, children, fullWidth, hint }) {
   return (
     <div className={fullWidth ? 'sm:col-span-2' : ''}>
       <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wider">{label}</label>
@@ -51,6 +54,28 @@ function Field({ label, error, children,理论, fullWidth, hint }) {
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
+}
+
+const COMPANY_DEFAULTS = {
+  name: '',
+  logo_url: '',
+  tagline: '',
+  address: '',
+  phone: '',
+  email: '',
+  website: '',
+  registration_no: '',
+  gst_no: '',
+  pan_no: '',
+  pf_code: '',
+  esi_code: '',
+  tan_no: '',
+  professional_tax_no: '',
+  bank_name: '',
+  account_no: '',
+  ifsc_code: '',
+  branch_name: '',
+  account_type: 'Current'
 }
 
 const DEFAULTS = {
@@ -89,9 +114,10 @@ const SMTP_DEFAULTS = {
 }
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('policy') // 'policy' or 'smtp'
+  const [activeTab, setActiveTab] = useState('policy') 
   const [policy, setPolicy] = useState(DEFAULTS)
   const [smtp, setSmtp] = useState(SMTP_DEFAULTS)
+  const [company, setCompany] = useState(COMPANY_DEFAULTS)
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -104,10 +130,16 @@ export default function Settings() {
         .then(r => setPolicy({ ...DEFAULTS, ...r.data }))
         .catch(() => toast.error('Failed to load policy settings'))
         .finally(() => setLoading(false))
-    } else {
+    } else if (activeTab === 'smtp') {
       settingsApi.getSmtp()
         .then(r => setSmtp({ ...SMTP_DEFAULTS, ...r.data }))
         .catch(() => toast.error('Failed to load SMTP settings'))
+        .finally(() => setLoading(false))
+    } else {
+      // For company, legal, bank tabs
+      companyApi.get()
+        .then(r => setCompany({ ...COMPANY_DEFAULTS, ...r.data }))
+        .catch(() => toast.error('Failed to load company details'))
         .finally(() => setLoading(false))
     }
   }, [activeTab])
@@ -119,6 +151,58 @@ export default function Settings() {
 
   function setSmtpField(field, value) {
     setSmtp(s => ({ ...s, [field]: value }))
+  }
+
+  function setCompanyField(field, value) {
+    setCompany(c => ({ ...c, [field]: value }))
+  }
+
+  async function handleSaveCompany() {
+    setSaving(true)
+    try {
+      await companyApi.update(company)
+      toast.success('Company details updated ✅')
+    } catch (err) {
+      toast.error('Failed to save company details')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+    async function handleSaveSmtp() {
+    if (!smtp.smtp_host || !smtp.smtp_user || !smtp.smtp_password || !smtp.sender_email) {
+      toast.error('Please fill all required SMTP fields')
+      return
+    }
+    setSaving(true)
+    try {
+      await settingsApi.updateSmtp(smtp)
+      toast.success('SMTP settings updated ✅')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to save SMTP settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleTestSmtp() {
+    if (!smtp.smtp_host || !smtp.smtp_user || !smtp.smtp_password || !smtp.sender_email) {
+      toast.error('Fill details before testing')
+      return
+    }
+    setTesting(true)
+    try {
+      const r = await settingsApi.testSmtp(smtp)
+      if (r.data.error) {
+        toast.error(`Error: ${r.data.error}`)
+      } else {
+        toast.success(r.data.message || 'Test email sent! Check your inbox.')
+      }
+    } catch (err) {
+      toast.error('SMTP test failed')
+    } finally {
+      setTesting(false)
+    }
   }
 
   async function handleSavePolicy() {
@@ -199,21 +283,21 @@ export default function Settings() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit mb-8">
-        <button
-          onClick={() => setActiveTab('policy')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'policy' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <SettingsIcon className="w-4 h-4" />
-          Attendance Policy
-        </button>
-        <button
-          onClick={() => setActiveTab('smtp')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'smtp' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <Mail className="w-4 h-4" />
-          SMTP Settings
-        </button>
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit mb-8 overflow-x-auto max-w-full no-scrollbar">
+        {[
+          { id: 'policy', label: 'Attendance Policy', icon: SettingsIcon },
+          { id: 'company', label: 'Company Details', icon: Building2 },
+          { id: 'smtp', label: 'SMTP Settings', icon: Mail },
+        ].map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <t.icon className="w-4 h-4" />
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -303,6 +387,125 @@ export default function Settings() {
             >
               {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
               Save Changes
+            </button>
+          </div>
+        </div>
+      ) : activeTab === 'company' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+          {/* Basic Info */}
+          <Section title="Basic Information" description="General details about your company" icon={Building2}>
+            <Field label="Company Name" fullWidth>
+              <input type="text" value={company.name} onChange={e => setCompanyField('name', e.target.value)}
+                placeholder="e.g. Acme Corporation"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Tagline">
+              <input type="text" value={company.tagline} onChange={e => setCompanyField('tagline', e.target.value)}
+                placeholder="Company slogan"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Website">
+              <input type="url" value={company.website} onChange={e => setCompanyField('website', e.target.value)}
+                placeholder="https://example.com"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Contact Email">
+              <input type="email" value={company.email} onChange={e => setCompanyField('email', e.target.value)}
+                placeholder="hr@company.com"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Phone Number">
+              <input type="text" value={company.phone} onChange={e => setCompanyField('phone', e.target.value)}
+                placeholder="+91 ..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Address" fullWidth>
+              <textarea value={company.address} onChange={e => setCompanyField('address', e.target.value)}
+                rows={3}
+                placeholder="Full registered address"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none" />
+            </Field>
+          </Section>
+
+          {/* Legal/Tax Info */}
+          <Section title="Statutory Registration" description="Tax and compliance registration details" icon={ShieldCheck}>
+            <Field label="Registration / CIN No.">
+              <input type="text" value={company.registration_no} onChange={e => setCompanyField('registration_no', e.target.value)}
+                placeholder="U12345MH..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="GST Number">
+              <input type="text" value={company.gst_no} onChange={e => setCompanyField('gst_no', e.target.value)}
+                placeholder="27AA..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="PAN Card Number">
+              <input type="text" value={company.pan_no} onChange={e => setCompanyField('pan_no', e.target.value)}
+                placeholder="ABCDP1234E"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="TAN Number">
+              <input type="text" value={company.tan_no} onChange={e => setCompanyField('tan_no', e.target.value)}
+                placeholder="MUMB12345F"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="PF Code">
+              <input type="text" value={company.pf_code} onChange={e => setCompanyField('pf_code', e.target.value)}
+                placeholder="MH/..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="ESI Code">
+              <input type="text" value={company.esi_code} onChange={e => setCompanyField('esi_code', e.target.value)}
+                placeholder="3100..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Professional Tax No.">
+              <input type="text" value={company.professional_tax_no} onChange={e => setCompanyField('professional_tax_no', e.target.value)}
+                placeholder="PTEC/..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+          </Section>
+
+          {/* Bank Info */}
+          <Section title="Corporate Bank Account" description="Details for salary disbursements and billing" icon={Landmark}>
+            <Field label="Bank Name" fullWidth>
+              <input type="text" value={company.bank_name} onChange={e => setCompanyField('bank_name', e.target.value)}
+                placeholder="e.g. HDFC Bank"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Account Number">
+              <input type="text" value={company.account_no} onChange={e => setCompanyField('account_no', e.target.value)}
+                placeholder="50100..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="IFSC Code">
+              <input type="text" value={company.ifsc_code} onChange={e => setCompanyField('ifsc_code', e.target.value)}
+                placeholder="HDFC0001234"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Branch Name">
+              <input type="text" value={company.branch_name} onChange={e => setCompanyField('branch_name', e.target.value)}
+                placeholder="Mumbai Central"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Account Type">
+              <select value={company.account_type} onChange={e => setCompanyField('account_type', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white">
+                <option value="Current">Current Account</option>
+                <option value="Savings">Savings Account</option>
+                <option value="OD">Overdraft Account</option>
+              </select>
+            </Field>
+          </Section>
+
+          <div className="fixed bottom-6 right-6">
+            <button
+              onClick={handleSaveCompany}
+              disabled={saving}
+              className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save Company Details
             </button>
           </div>
         </div>

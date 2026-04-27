@@ -27,6 +27,7 @@ from app.routers.bulk_operations import router as bulk_operations_router
 from app.routers.scheduler import router as scheduler_router
 from app.routers.insights import router as insights_router
 from app.routers.statutory_rates import router as statutory_rates_router
+from app.routers.company import router as company_router
 
 __all__ = [
     "auth_router",
@@ -58,4 +59,5 @@ __all__ = [
     "scheduler_router",
     "insights_router",
     "statutory_rates_router",
+    "company_router",
 ]

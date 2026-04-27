@@ -20,7 +20,7 @@ from app.routers import (
     compliance_router, payslips_router, salary_audit_router,
     salary_reports_router, bulk_operations_router,
     scheduler_router, insights_router,
-    statutory_rates_router,
+    statutory_rates_router, company_router,
 )
 from app.models.user import User, UserRole
 from app.utils.security import hash_password
@@ -108,6 +108,7 @@ app.include_router(bulk_operations_router, prefix="/api/v1/bulk")
 app.include_router(scheduler_router, prefix="/api/v1/scheduler")
 app.include_router(insights_router, prefix="/api/v1/insights")
 app.include_router(statutory_rates_router, prefix="/api/v1/statutory-rates")
+app.include_router(company_router, prefix="/api/v1/company")
 
 
 @app.get("/")

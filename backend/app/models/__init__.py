@@ -22,6 +22,7 @@ from app.models.arrear import Arrear
 from app.models.statutory_rate_config import StatutoryRateConfig, DeductionRateType, RateType
 from app.models.installment_record import InstallmentRecord
 from app.models.system_setting import SystemSetting
+from app.models.company import Company
 
 __all__ = [
     "User",
@@ -72,4 +73,5 @@ __all__ = [
     "RateType",
     "InstallmentRecord",
     "SystemSetting",
+    "Company",
 ]
