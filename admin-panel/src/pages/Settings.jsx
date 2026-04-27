@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Mail, Settings as SettingsIcon, Send, ShieldCheck, Server, TrendingUp } from 'lucide-react'
 import { settingsApi } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -20,14 +20,21 @@ function Toggle({ checked, onChange, disabled }) {
 }
 
 // Section card wrapper
-function Section({ title, description, children }) {
+function Section({ title, description, children, icon: Icon }) {
   return (
-    <div className="bg-white rounded-xl shadow p-6 mb-4">
-      <div className="mb-4">
-        <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-        {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+      <div className="mb-6 flex items-start gap-3">
+        {Icon && (
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <Icon className="w-5 h-5 text-blue-600" />
+          </div>
+        )}
+        <div>
+          <h2 className="text-base font-semibold text-gray-800">{title}</h2>
+          {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
+        </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {children}
       </div>
     </div>
@@ -35,11 +42,12 @@ function Section({ title, description, children }) {
 }
 
 // Field wrapper
-function Field({ label, error, children, fullWidth }) {
+function Field({ label, error, children,理论, fullWidth, hint }) {
   return (
     <div className={fullWidth ? 'sm:col-span-2' : ''}>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wider">{label}</label>
       {children}
+      {hint && <p className="text-gray-400 text-[11px] mt-1.5 italic">{hint}</p>}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   )
@@ -69,57 +77,55 @@ const DEFAULTS = {
   night_shift_allowance: 0,
 }
 
-function validate(policy) {
-  const errors = {}
-  if (policy.shift_hours < 1 || policy.shift_hours > 24)
-    errors.shift_hours = 'Must be between 1 and 24'
-  if (policy.grace_period_minutes < 0 || policy.grace_period_minutes > 60)
-    errors.grace_period_minutes = 'Must be between 0 and 60'
-  if (policy.allowed_late_marks_per_month < 0 || policy.allowed_late_marks_per_month > 31)
-    errors.allowed_late_marks_per_month = 'Must be between 0 and 31'
-  if (policy.min_working_hours_for_halfday < 0.5 || policy.min_working_hours_for_halfday > 12)
-    errors.min_working_hours_for_halfday = 'Must be between 0.5 and 12'
-  if (policy.comp_off_expiry_days < 1 || policy.comp_off_expiry_days > 365)
-    errors.comp_off_expiry_days = 'Must be between 1 and 365'
-  if (policy.missed_punch_requests_per_month < 0 || policy.missed_punch_requests_per_month > 10)
-    errors.missed_punch_requests_per_month = 'Must be between 0 and 10'
-  return errors
+const SMTP_DEFAULTS = {
+  smtp_host: '',
+  smtp_port: 587,
+  smtp_user: '',
+  smtp_password: '',
+  sender_email: '',
+  sender_name: 'HRMS Admin',
+  use_tls: true,
+  app_url: 'https://drne2yi2f6fd.share.zrok.io/employee',
 }
 
 export default function Settings() {
+  const [activeTab, setActiveTab] = useState('policy') // 'policy' or 'smtp'
   const [policy, setPolicy] = useState(DEFAULTS)
+  const [smtp, setSmtp] = useState(SMTP_DEFAULTS)
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [fetchError, setFetchError] = useState(null)
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
-    settingsApi.getPolicy()
-      .then(r => {
-        setPolicy({ ...DEFAULTS, ...r.data })
-        setFetchError(null)
-      })
-      .catch(() => setFetchError('Failed to load policy settings. Please refresh.'))
-      .finally(() => setLoading(false))
-  }, [])
+    setLoading(true)
+    if (activeTab === 'policy') {
+      settingsApi.getPolicy()
+        .then(r => setPolicy({ ...DEFAULTS, ...r.data }))
+        .catch(() => toast.error('Failed to load policy settings'))
+        .finally(() => setLoading(false))
+    } else {
+      settingsApi.getSmtp()
+        .then(r => setSmtp({ ...SMTP_DEFAULTS, ...r.data }))
+        .catch(() => toast.error('Failed to load SMTP settings'))
+        .finally(() => setLoading(false))
+    }
+  }, [activeTab])
 
-  function set(field, value) {
+  function setPolicyField(field, value) {
     setPolicy(p => ({ ...p, [field]: value }))
     setErrors(e => { const n = { ...e }; delete n[field]; return n })
   }
 
-  async function handleSave() {
-    const errs = validate(policy)
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs)
-      toast.error('Please fix validation errors before saving')
-      return
-    }
+  function setSmtpField(field, value) {
+    setSmtp(s => ({ ...s, [field]: value }))
+  }
+
+  async function handleSavePolicy() {
     setSaving(true)
     try {
-      const r = await settingsApi.updatePolicy(policy)
-      setPolicy({ ...DEFAULTS, ...r.data })
-      toast.success('Settings saved successfully ✅')
+      await settingsApi.updatePolicy(policy)
+      toast.success('Attendance policy updated ✅')
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to save settings')
     } finally {
@@ -127,20 +133,40 @@ export default function Settings() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-      </div>
-    )
+  async function handleSaveSmtp() {
+    if (!smtp.smtp_host || !smtp.smtp_user || !smtp.smtp_password || !smtp.sender_email) {
+      toast.error('Please fill all required SMTP fields')
+      return
+    }
+    setSaving(true)
+    try {
+      await settingsApi.updateSmtp(smtp)
+      toast.success('SMTP settings updated ✅')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to save SMTP settings')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  if (fetchError) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-        <p className="text-red-600">{fetchError}</p>
-      </div>
-    )
+  async function handleTestSmtp() {
+    if (!smtp.smtp_host || !smtp.smtp_user || !smtp.smtp_password || !smtp.sender_email) {
+      toast.error('Fill details before testing')
+      return
+    }
+    setTesting(true)
+    try {
+      const r = await settingsApi.testSmtp(smtp)
+      if (r.data.error) {
+        toast.error(`Error: ${r.data.error}`)
+      } else {
+        toast.success(r.data.message || 'Test email sent! Check your inbox.')
+      }
+    } catch (err) {
+      toast.error('SMTP test failed')
+    } finally {
+      setTesting(false)
+    }
   }
 
   const numInput = (field, min, max, step = 1) => (
@@ -150,169 +176,232 @@ export default function Settings() {
       max={max}
       step={step}
       value={policy[field]}
-      onChange={e => set(field, parseFloat(e.target.value))}
-      className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+      onChange={e => setPolicyField(field, parseFloat(e.target.value))}
+      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
     />
   )
 
   const selectInput = (field, options) => (
     <select
       value={policy[field]}
-      onChange={e => set(field, e.target.value)}
-      className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+      onChange={e => setPolicyField(field, e.target.value)}
+      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
     >
       {options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
     </select>
   )
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Attendance Policy Settings</h1>
-        <p className="text-gray-500 text-sm mt-1">Configure company-wide attendance rules. Changes apply to all future calculations.</p>
+    <div className="max-w-4xl pb-20">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
+        <p className="text-gray-500 text-sm mt-1">Manage company policies and system configurations</p>
       </div>
 
-      {/* Section 1: Working Hours & Shift */}
-      <Section title="⏰ Working Hours & Shift" description="Define shift timings and working hour requirements">
-        <Field label="Shift Type">
-          {selectInput('shift_type', [
-            ['general', 'General Shift'],
-            ['morning', 'Morning Shift'],
-            ['evening', 'Evening Shift'],
-            ['night', 'Night Shift'],
-          ])}
-        </Field>
-        <Field label="Shift Start Time">
-          <input type="time" value={policy.shift_start_time}
-            onChange={e => set('shift_start_time', e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
-        </Field>
-        <Field label="Shift End Time">
-          <input type="time" value={policy.shift_end_time}
-            onChange={e => set('shift_end_time', e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
-        </Field>
-        <Field label="Daily Shift Hours" error={errors.shift_hours}>
-          {numInput('shift_hours', 1, 24)}
-        </Field>
-        <Field label="Weekly Limit Hours">
-          {numInput('weekly_limit_hours', 1, 168)}
-        </Field>
-        <Field label="Break Time (minutes)">
-          {numInput('break_time_minutes', 0, 120)}
-        </Field>
-        <Field label="Night Shift Allowance (₹)">
-          {numInput('night_shift_allowance', 0, 99999, 0.01)}
-        </Field>
-      </Section>
-
-      {/* Section 2: Late Coming */}
-      <Section title="🕐 Late Coming Policy" description="Rules for employees who arrive after shift start">
-        <Field label="Grace Period (minutes)" error={errors.grace_period_minutes}>
-          {numInput('grace_period_minutes', 0, 60)}
-        </Field>
-        <Field label="Allowed Late Marks / Month" error={errors.allowed_late_marks_per_month}>
-          {numInput('allowed_late_marks_per_month', 0, 31)}
-        </Field>
-        <Field label="Action After Limit Exceeded">
-          {selectInput('late_action', [
-            ['half_day', 'Mark Half Day'],
-            ['salary_deduction', 'Salary Deduction'],
-          ])}
-        </Field>
-      </Section>
-
-      {/* Section 3: Early Leaving */}
-      <Section title="🚶 Early Leaving Policy" description="Rules for employees who leave before shift end">
-        <Field label="Min Working Hours for Half Day" error={errors.min_working_hours_for_halfday}>
-          {numInput('min_working_hours_for_halfday', 0.5, 12, 0.5)}
-        </Field>
-        <Field label="Early Leaving Action">
-          {selectInput('early_leaving_action', [
-            ['half_day', 'Mark Half Day'],
-            ['salary_deduction', 'Salary Deduction'],
-          ])}
-        </Field>
-      </Section>
-
-      {/* Section 4: Absent Policy */}
-      <Section title="🚫 Absent Policy" description="Rules for consecutive absences">
-        <Field label="Consecutive Absent Threshold (days)">
-          {numInput('consecutive_absent_threshold', 1, 30)}
-        </Field>
-      </Section>
-
-      {/* Section 5: Overtime */}
-      <Section title="⏱️ Overtime (OT)" description="Configure overtime calculation rules">
-        <Field label="Enable Overtime" fullWidth>
-          <div className="flex items-center gap-3">
-            <Toggle checked={policy.ot_enabled} onChange={v => set('ot_enabled', v)} />
-            <span className="text-sm text-gray-600">{policy.ot_enabled ? 'Enabled' : 'Disabled'}</span>
-          </div>
-        </Field>
-        {policy.ot_enabled && (
-          <>
-            <Field label="Normal Day OT Multiplier">
-              {numInput('ot_normal_multiplier', 1, 5, 0.5)}
-            </Field>
-            <Field label="Holiday / Weekly Off OT Multiplier">
-              {numInput('ot_holiday_multiplier', 1, 5, 0.5)}
-            </Field>
-          </>
-        )}
-      </Section>
-
-      {/* Section 6: Weekly Off & Holidays */}
-      <Section title="🏖️ Weekly Off & Holidays" description="Configure weekly off days">
-        <Field label="Weekly Off Day">
-          {selectInput('weekly_off_day', [
-            ['sunday', 'Sunday'],
-            ['saturday', 'Saturday'],
-            ['rotational', 'Rotational'],
-          ])}
-        </Field>
-        <Field label="2nd & 4th Saturday Off">
-          <div className="flex items-center gap-3 mt-1">
-            <Toggle checked={policy.second_fourth_saturday_off}
-              onChange={v => set('second_fourth_saturday_off', v)} />
-            <span className="text-sm text-gray-600">{policy.second_fourth_saturday_off ? 'Yes' : 'No'}</span>
-          </div>
-        </Field>
-      </Section>
-
-      {/* Section 7: Comp-Off */}
-      <Section title="🔁 Comp-Off Policy" description="Compensatory leave for working on holidays/weekly off">
-        <Field label="Enable Comp-Off">
-          <div className="flex items-center gap-3 mt-1">
-            <Toggle checked={policy.comp_off_enabled} onChange={v => set('comp_off_enabled', v)} />
-            <span className="text-sm text-gray-600">{policy.comp_off_enabled ? 'Enabled' : 'Disabled'}</span>
-          </div>
-        </Field>
-        {policy.comp_off_enabled && (
-          <Field label="Comp-Off Expiry (days)" error={errors.comp_off_expiry_days}>
-            {numInput('comp_off_expiry_days', 1, 365)}
-          </Field>
-        )}
-      </Section>
-
-      {/* Section 8: Missed Punch */}
-      <Section title="⚠️ Missed Punch Policy" description="Regularization request limits">
-        <Field label="Max Requests / Month" error={errors.missed_punch_requests_per_month}>
-          {numInput('missed_punch_requests_per_month', 0, 10)}
-        </Field>
-      </Section>
-
-      {/* Save button */}
-      <div className="sticky bottom-0 bg-gray-50 py-4 border-t mt-2">
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit mb-8">
         <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition"
+          onClick={() => setActiveTab('policy')}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'policy' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? 'Saving...' : 'Save All Settings'}
+          <SettingsIcon className="w-4 h-4" />
+          Attendance Policy
+        </button>
+        <button
+          onClick={() => setActiveTab('smtp')}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'smtp' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Mail className="w-4 h-4" />
+          SMTP Settings
         </button>
       </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64 bg-white rounded-2xl border border-dashed border-gray-200">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+      ) : activeTab === 'policy' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <Section title="Working Hours & Shift" description="Define shift timings and working hour requirements" icon={Server}>
+            <Field label="Shift Type">
+              {selectInput('shift_type', [
+                ['general', 'General Shift'],
+                ['morning', 'Morning Shift'],
+                ['evening', 'Evening Shift'],
+                ['night', 'Night Shift'],
+              ])}
+            </Field>
+            <Field label="Shift Start Time">
+              <input type="time" value={policy.shift_start_time}
+                onChange={e => setPolicyField('shift_start_time', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Shift End Time">
+              <input type="time" value={policy.shift_end_time}
+                onChange={e => setPolicyField('shift_end_time', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            </Field>
+            <Field label="Daily Shift Hours">
+              {numInput('shift_hours', 1, 24)}
+            </Field>
+            <Field label="Weekly Limit Hours">
+              {numInput('weekly_limit_hours', 1, 168)}
+            </Field>
+            <Field label="Break Time (minutes)">
+              {numInput('break_time_minutes', 0, 120)}
+            </Field>
+          </Section>
+
+          <Section title="Late Coming & Early Leaving" description="Rules for attendance punctuality" icon={ShieldCheck}>
+            <Field label="Grace Period (minutes)">
+              {numInput('grace_period_minutes', 0, 60)}
+            </Field>
+            <Field label="Allowed Late Marks / Month">
+              {numInput('allowed_late_marks_per_month', 0, 31)}
+            </Field>
+            <Field label="Action After Limit">
+              {selectInput('late_action', [
+                ['half_day', 'Mark Half Day'],
+                ['salary_deduction', 'Salary Deduction'],
+              ])}
+            </Field>
+            <Field label="Min Working Hours for Half Day">
+              {numInput('min_working_hours_for_halfday', 0.5, 12, 0.5)}
+            </Field>
+          </Section>
+
+          <Section title="Overtime & Comp-Off" description="Calculation rules for extra work" icon={TrendingUp}>
+             <Field label="Enable Overtime" fullWidth>
+              <div className="flex items-center gap-3">
+                <Toggle checked={policy.ot_enabled} onChange={v => setPolicyField('ot_enabled', v)} />
+                <span className="text-sm text-gray-600 font-medium">{policy.ot_enabled ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </Field>
+            {policy.ot_enabled && (
+              <>
+                <Field label="Normal Day Multiplier">
+                  {numInput('ot_normal_multiplier', 1, 5, 0.5)}
+                </Field>
+                <Field label="Holiday Multiplier">
+                  {numInput('ot_holiday_multiplier', 1, 5, 0.5)}
+                </Field>
+              </>
+            )}
+            <Field label="Enable Comp-Off" fullWidth>
+              <div className="flex items-center gap-3">
+                <Toggle checked={policy.comp_off_enabled} onChange={v => setPolicyField('comp_off_enabled', v)} />
+                <span className="text-sm text-gray-600 font-medium">{policy.comp_off_enabled ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </Field>
+          </Section>
+
+          <div className="fixed bottom-6 right-6">
+            <button
+              onClick={handleSavePolicy}
+              disabled={saving}
+              className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save Changes
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <Section title="Email Server Configuration" description="SMTP server details for sending automated notifications" icon={Mail}>
+            <Field label="SMTP Host" hint="e.g. smtp.gmail.com">
+              <input
+                type="text"
+                value={smtp.smtp_host}
+                onChange={e => setSmtpField('smtp_host', e.target.value)}
+                placeholder="smtp.example.com"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </Field>
+            <Field label="SMTP Port" hint="Usually 587 (TLS) or 465 (SSL)">
+              <input
+                type="number"
+                value={smtp.smtp_port}
+                onChange={e => setSmtpField('smtp_port', parseInt(e.target.value))}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </Field>
+            <Field label="SMTP Username" hint="Your email or username">
+              <input
+                type="text"
+                value={smtp.smtp_user}
+                onChange={e => setSmtpField('smtp_user', e.target.value)}
+                placeholder="user@example.com"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </Field>
+            <Field label="SMTP Password" hint="Use an App Password if using Gmail">
+              <input
+                type="password"
+                value={smtp.smtp_password}
+                onChange={e => setSmtpField('smtp_password', e.target.value)}
+                placeholder="••••••••"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </Field>
+          </Section>
+
+          <Section title="Sender Identity" description="How the email appears to the recipient" icon={ShieldCheck}>
+            <Field label="Sender Email" hint="Should be same as SMTP user usually">
+              <input
+                type="email"
+                value={smtp.sender_email}
+                onChange={e => setSmtpField('sender_email', e.target.value)}
+                placeholder="no-reply@company.com"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </Field>
+            <Field label="Sender Name" hint="Display name in inbox">
+              <input
+                type="text"
+                value={smtp.sender_name}
+                onChange={e => setSmtpField('sender_name', e.target.value)}
+                placeholder="HR Department"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </Field>
+            <Field label="PWA Portal URL" hint="URL sent to employees in welcome email">
+              <input
+                type="text"
+                value={smtp.app_url}
+                onChange={e => setSmtpField('app_url', e.target.value)}
+                placeholder="https://..."
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+            </Field>
+            <Field label="Use TLS / SSL" fullWidth>
+              <div className="flex items-center gap-3">
+                <Toggle checked={smtp.use_tls} onChange={v => setSmtpField('use_tls', v)} />
+                <span className="text-sm text-gray-600 font-medium">{smtp.use_tls ? 'Enabled (Secure)' : 'Disabled'}</span>
+              </div>
+            </Field>
+          </Section>
+
+          <div className="fixed bottom-6 right-6 flex gap-3">
+            <button
+              onClick={handleTestSmtp}
+              disabled={testing || saving}
+              className="flex items-center gap-2 px-6 py-3 bg-white text-blue-600 border border-blue-200 rounded-2xl font-bold shadow-lg hover:bg-blue-50 hover:-translate-y-0.5 transition-all disabled:opacity-50"
+            >
+              {testing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              Test Connection
+            </button>
+            <button
+              onClick={handleSaveSmtp}
+              disabled={saving || testing}
+              className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save SMTP Settings
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

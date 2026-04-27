@@ -236,6 +236,9 @@ export const attendanceHrApi = {
 export const settingsApi = {
   getPolicy: () => api.get('/settings/policy'),
   updatePolicy: (data) => api.put('/settings/policy', data),
+  getSmtp: () => api.get('/settings/smtp'),
+  updateSmtp: (data) => api.put('/settings/smtp', data),
+  testSmtp: (data) => api.post('/settings/smtp/test', data),
 }
 
 export const missedPunchApi = {

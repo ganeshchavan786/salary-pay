@@ -6,7 +6,7 @@ from app.models.user import UserRole
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=6)
+    password: Optional[str] = Field(None, min_length=6)
     role: UserRole = UserRole.EMPLOYEE
     emp_id: Optional[str] = None
 

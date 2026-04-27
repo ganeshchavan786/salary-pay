@@ -13,6 +13,14 @@ from app.utils.deps import get_current_user, require_admin
 from app.config import settings
 from app.limiter import limiter
 
+import secrets
+import string
+
+def generate_random_password(length=10):
+    """Generate a secure random password."""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for i in range(length))
+
 router = APIRouter(tags=["Authentication"])
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "admin123"
@@ -172,9 +180,13 @@ async def register_user(
             detail="Username already registered"
         )
     
+    password_to_send = user_data.password
+    if not password_to_send:
+        password_to_send = generate_random_password()
+        
     new_user = User(
         username=user_data.username,
-        password_hash=hash_password(user_data.password),
+        password_hash=hash_password(password_to_send),
         role=user_data.role,
         emp_id=user_data.emp_id
     )
@@ -182,6 +194,37 @@ async def register_user(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    # Automatically send welcome email if it's an employee login
+    if new_user.role == "EMPLOYEE" and new_user.emp_id:
+        from app.models.employee import Employee
+        from app.utils.notification_service import notification_service
+        
+        result = await db.execute(select(Employee).where(Employee.id == new_user.emp_id))
+        employee = result.scalar_one_or_none()
+        
+        if employee and employee.email:
+            try:
+                # Get app URL from settings or use a default
+                from app.models.system_setting import SystemSetting
+                res = await db.execute(select(SystemSetting).where(SystemSetting.key == "app_url"))
+                app_url_setting = res.scalar_one_or_none()
+                app_url = app_url_setting.value if app_url_setting else "https://drne2yi2f6fd.share.zrok.io/employee"
+                
+                await notification_service.send_notification(
+                    recipient_email=employee.email,
+                    template_key="welcome_pwa",
+                    variables={
+                        "employee_name": employee.name,
+                        "username": new_user.username,
+                        "password": password_to_send, # Use the generated/provided password
+                        "company_name": "SalaryPay HR",
+                        "app_url": app_url
+                    }
+                )
+            except Exception as e:
+                import logging
+                logging.error(f"Failed to send welcome email: {e}")
     
     return UserResponse.model_validate(new_user)
 
@@ -208,3 +251,59 @@ async def change_password(
     await db.commit()
 
     return {"message": "Password changed successfully"}
+from app.schemas.settings import ResendWelcomeEmailRequest
+
+@router.post("/resend-welcome-email")
+async def resend_welcome_email(
+    payload: ResendWelcomeEmailRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Manual trigger to send/resend welcome email with credentials."""
+    from app.models.employee import Employee
+    from app.utils.notification_service import notification_service
+    from app.models.system_setting import SystemSetting
+    
+    result = await db.execute(select(Employee).where(Employee.id == payload.emp_id))
+    employee = result.scalar_one_or_none()
+    
+    if not employee or not employee.email:
+        raise HTTPException(status_code=400, detail="Employee not found or has no email")
+        
+    try:
+        # Update password in DB if user exists
+        from app.models.user import User
+        from app.routers.auth import hash_password
+        
+        password_to_send = payload.password
+        if not password_to_send:
+            password_to_send = generate_random_password()
+            
+        user_result = await db.execute(select(User).where(User.emp_id == payload.emp_id))
+        user = user_result.scalar_one_or_none()
+        
+        if user:
+            user.password_hash = hash_password(password_to_send)
+            # If username changed, update it too (optional but helpful)
+            user.username = payload.username
+            await db.commit()
+            
+        res = await db.execute(select(SystemSetting).where(SystemSetting.key == "app_url"))
+        app_url_setting = res.scalar_one_or_none()
+        app_url = app_url_setting.value if app_url_setting else "https://drne2yi2f6fd.share.zrok.io/employee"
+        
+        await notification_service.send_notification(
+            recipient_email=employee.email,
+            template_key="welcome_pwa",
+            variables={
+                "employee_name": employee.name,
+                "username": payload.username,
+                "password": password_to_send,
+                "company_name": "SalaryPay HR",
+                "app_url": app_url
+            }
+        )
+        return {"message": "Password reset and welcome email sent successfully"}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset/send email: {str(e)}")

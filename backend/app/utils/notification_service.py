@@ -25,6 +25,10 @@ class NotificationService:
             "subject": "TDS Declaration Pending - FY {financial_year}",
             "body": "Dear {employee_name}, Please submit your tax declaration for FY {financial_year}.",
         },
+        "welcome_pwa": {
+            "subject": "Welcome to {company_name} HR Portal",
+            "body": "Dear {employee_name},\n\nYour login for the HR portal has been created.\n\nUsername: {username}\nPassword: {password}\n\nYou can access the portal here: {app_url}\n\nBest regards,\n{company_name} Team",
+        },
     }
 
     def render_template(self, template_key: str, variables: Dict) -> Dict:
@@ -43,6 +47,17 @@ class NotificationService:
 
         return {"subject": subject, "body": body}
 
+    async def get_smtp_config(self):
+        from app.database import AsyncSessionLocal
+        from app.models.system_setting import SystemSetting
+        from sqlalchemy import select
+        
+        async with AsyncSessionLocal() as db:
+            keys = ["smtp_host", "smtp_port", "smtp_user", "smtp_password", "sender_email", "sender_name", "use_tls"]
+            result = await db.execute(select(SystemSetting).where(SystemSetting.key.in_(keys)))
+            settings_dict = {s.key: s.value for s in result.scalars().all()}
+            return settings_dict
+
     async def send_notification(
         self,
         recipient_email: str,
@@ -50,7 +65,7 @@ class NotificationService:
         variables: Dict,
         channel: str = "email",
     ) -> Dict:
-        """Send a notification (logs to console in dev mode)"""
+        """Send a notification (logs to console and sends email if SMTP is configured)"""
         rendered = self.render_template(template_key, variables)
 
         notification = {
@@ -62,8 +77,42 @@ class NotificationService:
             "status": "sent",
         }
 
-        # In production, integrate with SendGrid/SMTP
+        # In production, integrate with SMTP
         logger.info(f"[NOTIFICATION] To: {recipient_email} | Subject: {rendered['subject']}")
+
+        if channel == "email":
+            try:
+                import smtplib
+                from email.mime.text import MIMEText
+                from email.mime.multipart import MIMEMultipart
+                
+                config = await self.get_smtp_config()
+                if not config.get("smtp_host"):
+                    logger.warning("SMTP not configured, skipping real email")
+                    return notification
+                
+                msg = MIMEMultipart()
+                msg['From'] = f"{config.get('sender_name', 'HRMS')} <{config.get('sender_email')}>"
+                msg['To'] = recipient_email
+                msg['Subject'] = rendered["subject"]
+                msg.attach(MIMEText(rendered["body"], 'plain'))
+                
+                port = int(config.get("smtp_port", 587))
+                if port == 465:
+                    server = smtplib.SMTP_SSL(config.get("smtp_host"), port, timeout=10)
+                else:
+                    server = smtplib.SMTP(config.get("smtp_host"), port, timeout=10)
+                    if config.get("use_tls", "true").lower() == "true":
+                        server.starttls()
+                
+                server.login(config.get("smtp_user"), config.get("smtp_password"))
+                server.send_message(msg)
+                server.quit()
+                logger.info(f"Email successfully sent to {recipient_email}")
+            except Exception as e:
+                logger.error(f"Failed to send email to {recipient_email}: {e}")
+                notification["status"] = "failed"
+                notification["error"] = str(e)
 
         return notification
 

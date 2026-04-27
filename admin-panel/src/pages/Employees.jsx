@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Plus, Search, Edit2, Trash2, Camera, CheckCircle, XCircle,
   Loader2, UserCheck, KeyRound, LayoutGrid, List, Download,
-  Upload, Users, UserX, Clock, ScanFace, FileSpreadsheet, X
+  Upload, Users, UserX, Clock, ScanFace, FileSpreadsheet, X, ShieldCheck
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { employeeApi, api } from '../services/api'
@@ -123,6 +123,7 @@ export default function Employees() {
   const [formError, setFormError] = useState('')
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginSaving, setLoginSaving] = useState(false)
+  const [resending, setResending] = useState(false)
 
   // Derived
   const departments = [...new Set(employees.map(e => e.department).filter(Boolean))]
@@ -296,12 +297,36 @@ export default function Employees() {
     e.preventDefault()
     setLoginSaving(true)
     try {
-      await api.post('/auth/register', { username: loginForm.username, password: loginForm.password, role: 'EMPLOYEE', emp_id: loginEmp.id })
-      toast.success(`Login created — username: ${loginForm.username}`)
+      // Send empty password to trigger backend auto-generation
+      await api.post('/auth/register', { username: loginForm.username, password: '', role: 'EMPLOYEE', emp_id: loginEmp.id })
+      toast.success(`Login created & Credentials sent to email!`)
       setShowLoginModal(false)
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to create login')
+      const detail = err.response?.data?.detail
+      if (detail === "Username already registered") {
+        toast.error("User already exists. Use the 'Resend Email' option below.")
+      } else {
+        toast.error(detail || 'Failed to create login')
+      }
     } finally { setLoginSaving(false) }
+  }
+
+  async function handleResendEmail() {
+    if (!loginEmp) return
+    setResending(true)
+    try {
+      await api.post('/auth/resend-welcome-email', {
+        emp_id: loginEmp.id,
+        username: loginForm.username,
+        password: '' // Backend will generate new password
+      })
+      toast.success('New credentials generated & sent to email! 📧')
+      setShowLoginModal(false)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to resend email')
+    } finally {
+      setResending(false)
+    }
   }
 
   // Export
@@ -623,21 +648,24 @@ export default function Employees() {
               <h2 className="text-lg font-semibold text-gray-800">🔑 Create PWA Login</h2>
               <p className="text-sm text-gray-500 mt-1">For: <strong>{loginEmp.name}</strong> ({loginEmp.emp_code})</p>
             </div>
-            <form onSubmit={handleCreateLogin} className="p-4 space-y-3">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">Creates a login for the employee to use the PWA app.</div>
+            <form onSubmit={handleCreateLogin} className="p-4 space-y-4">
+              <div className="p-3 bg-purple-50 rounded-xl text-[11px] text-purple-700 border border-purple-100 flex gap-2.5">
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <p>Security Notice: Passwords are now automatically generated and sent directly to the employee's registered email. Admins cannot see or set manual passwords.</p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username (Employee Code)</label>
                 <input type="text" value={loginForm.username} readOnly className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed rounded-lg text-sm outline-none" required />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <input type="text" value={loginForm.password} onChange={e => setLoginForm(f => ({...f, password: e.target.value}))} className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500" required minLength={6} />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowLoginModal(false)} className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={loginSaving} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                  {loginSaving && <Loader2 className="w-4 h-4 animate-spin" />}Create Login
+              <div className="flex flex-col gap-2 pt-2">
+                <button type="submit" disabled={loginSaving || resending} className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                  {loginSaving && <Loader2 className="w-4 h-4 animate-spin" />}Create Login & Send Email
                 </button>
+                <button type="button" onClick={handleResendEmail} disabled={resending || loginSaving || !loginEmp} className="w-full px-4 py-2 border border-purple-200 text-purple-600 rounded-lg text-sm hover:bg-purple-50 disabled:opacity-50 flex items-center justify-center gap-2">
+                   {resending && <Loader2 className="w-4 h-4 animate-spin" />}
+                   Resend Credentials Email
+                </button>
+                <button type="button" onClick={() => setShowLoginModal(false)} className="w-full px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
               </div>
             </form>
           </div>
