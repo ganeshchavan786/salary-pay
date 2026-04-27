@@ -117,7 +117,12 @@ export default function Employees() {
   const importFileRef = useRef(null)
 
   // Form
-  const emptyForm = { emp_code: '', name: '', email: '', department: '', salary: '', designation: '', joining_date: '', phone: '', remarks: '' }
+  const emptyForm = { 
+    emp_code: '', name: '', email: '', department: '', salary: '', 
+    designation: '', joining_date: '', phone: '', remarks: '',
+    aadhaar_no: '', pan_no: '', bank_name: '', account_no: '', ifsc_code: '',
+    current_address: '', permanent_address: '', emergency_name: '', emergency_phone: ''
+  }
   const [formData, setFormData] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
@@ -207,7 +212,12 @@ export default function Employees() {
       emp_code: emp.emp_code, name: emp.name, email: emp.email || '',
       department: emp.department || '', salary: emp.salary ?? '',
       designation: emp.designation || '', joining_date: emp.joining_date || '',
-      phone: emp.phone || '', remarks: emp.remarks || ''
+      phone: emp.phone || '', remarks: emp.remarks || '',
+      aadhaar_no: emp.aadhaar_no || '', pan_no: emp.pan_no || '',
+      bank_name: emp.bank_name || '', account_no: emp.account_no || '',
+      ifsc_code: emp.ifsc_code || '', current_address: emp.current_address || '',
+      permanent_address: emp.permanent_address || '', emergency_name: emp.emergency_name || '',
+      emergency_phone: emp.emergency_phone || ''
     })
     setFormError('')
     setShowModal(true)
@@ -241,6 +251,15 @@ export default function Employees() {
         joining_date: formData.joining_date || null,
         phone: formData.phone?.trim() || null,
         remarks: formData.remarks?.trim() || null,
+        aadhaar_no: formData.aadhaar_no?.trim() || null,
+        pan_no: formData.pan_no?.trim() || null,
+        bank_name: formData.bank_name?.trim() || null,
+        account_no: formData.account_no?.trim() || null,
+        ifsc_code: formData.ifsc_code?.trim() || null,
+        current_address: formData.current_address?.trim() || null,
+        permanent_address: formData.permanent_address?.trim() || null,
+        emergency_name: formData.emergency_name?.trim() || null,
+        emergency_phone: formData.emergency_phone?.trim() || null,
       }
       if (editingEmployee) {
         await employeeApi.update(editingEmployee.id, payload)
@@ -610,6 +629,94 @@ export default function Employees() {
                     <input type="date" value={formData.joining_date}
                       onChange={e => setFormData(d => ({...d, joining_date: e.target.value}))}
                       className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Identity & Documents */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 text-blue-600">🪪 Identity & Documents</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Aadhaar Number</label>
+                    <input type="text" value={formData.aadhaar_no}
+                      onChange={e => setFormData(d => ({...d, aadhaar_no: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                      placeholder="1234 5678 9012" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">PAN Card Number</label>
+                    <input type="text" value={formData.pan_no}
+                      onChange={e => setFormData(d => ({...d, pan_no: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                      placeholder="ABCDE1234F" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Details */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 text-green-600">🏦 Bank Details (Salary Transfer)</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Bank Name</label>
+                    <input type="text" value={formData.bank_name}
+                      onChange={e => setFormData(d => ({...d, bank_name: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                      placeholder="HDFC Bank / SBI" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Account Number</label>
+                      <input type="text" value={formData.account_no}
+                        onChange={e => setFormData(d => ({...d, account_no: e.target.value}))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                        placeholder="0123456789" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">IFSC Code</label>
+                      <input type="text" value={formData.ifsc_code}
+                        onChange={e => setFormData(d => ({...d, ifsc_code: e.target.value}))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                        placeholder="HDFC0001234" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address & Emergency Contact */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 text-red-600">🏠 Address & Emergency</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Current Address</label>
+                    <textarea value={formData.current_address}
+                      onChange={e => setFormData(d => ({...d, current_address: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent resize-none"
+                      rows={2} placeholder="Building, Street, Area..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Permanent Address</label>
+                    <textarea value={formData.permanent_address}
+                      onChange={e => setFormData(d => ({...d, permanent_address: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent resize-none"
+                      rows={2} placeholder="Same as current or different..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Emergency Name</label>
+                      <input type="text" value={formData.emergency_name}
+                        onChange={e => setFormData(d => ({...d, emergency_name: e.target.value}))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+                        placeholder="Spouse / Parent Name" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Emergency Phone</label>
+                      <input type="text" value={formData.emergency_phone}
+                        onChange={e => setFormData(d => ({...d, emergency_phone: e.target.value}))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+                        placeholder="+91 9988776655" />
+                    </div>
                   </div>
                 </div>
               </div>

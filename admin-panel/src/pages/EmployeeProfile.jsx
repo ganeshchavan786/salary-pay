@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Edit2, Save, X, Camera, Trash2, Loader2,
   UserCheck, CheckCircle, XCircle, User, Mail, Phone,
-  Building, Briefcase, Calendar, DollarSign, FileText
+  Building, Briefcase, Calendar, DollarSign, FileText,
+  Landmark, CreditCard, MapPin, PhoneCall
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { employeeApi, attendanceHrApi, leaveApi, payrollApi } from '../services/api'
@@ -98,6 +99,11 @@ export default function EmployeeProfile() {
       department: employee.department || '', designation: employee.designation || '',
       salary: employee.salary ?? '', joining_date: employee.joining_date || '',
       remarks: employee.remarks || '',
+      aadhaar_no: employee.aadhaar_no || '', pan_no: employee.pan_no || '',
+      bank_name: employee.bank_name || '', account_no: employee.account_no || '',
+      ifsc_code: employee.ifsc_code || '', current_address: employee.current_address || '',
+      permanent_address: employee.permanent_address || '', emergency_name: employee.emergency_name || '',
+      emergency_phone: employee.emergency_phone || '',
     })
     setEditing(true)
   }
@@ -110,6 +116,11 @@ export default function EmployeeProfile() {
         department: editForm.department || null, designation: editForm.designation || null,
         salary: editForm.salary !== '' ? Number(editForm.salary) : null,
         joining_date: editForm.joining_date || null, remarks: editForm.remarks || null,
+        aadhaar_no: editForm.aadhaar_no || null, pan_no: editForm.pan_no || null,
+        bank_name: editForm.bank_name || null, account_no: editForm.account_no || null,
+        ifsc_code: editForm.ifsc_code || null, current_address: editForm.current_address || null,
+        permanent_address: editForm.permanent_address || null, emergency_name: editForm.emergency_name || null,
+        emergency_phone: editForm.emergency_phone || null,
       })
       toast.success('Employee updated')
       setEditing(false)
@@ -323,6 +334,15 @@ export default function EmployeeProfile() {
                   { label: 'Designation', key: 'designation', type: 'text' },
                   { label: 'Salary (₹)', key: 'salary', type: 'number' },
                   { label: 'Joining Date', key: 'joining_date', type: 'date' },
+                  { label: 'Aadhaar Number', key: 'aadhaar_no', type: 'text' },
+                  { label: 'PAN Card Number', key: 'pan_no', type: 'text' },
+                  { label: 'Bank Name', key: 'bank_name', type: 'text' },
+                  { label: 'Account Number', key: 'account_no', type: 'text' },
+                  { label: 'IFSC Code', key: 'ifsc_code', type: 'text' },
+                  { label: 'Current Address', key: 'current_address', type: 'text' },
+                  { label: 'Permanent Address', key: 'permanent_address', type: 'text' },
+                  { label: 'Emergency Contact Name', key: 'emergency_name', type: 'text' },
+                  { label: 'Emergency Contact Phone', key: 'emergency_phone', type: 'text' },
                 ].map(f => (
                   <div key={f.key}>
                     <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
@@ -342,8 +362,16 @@ export default function EmployeeProfile() {
                   { icon: DollarSign, label: 'Salary', value: emp.salary ? '₹' + Number(emp.salary).toLocaleString('en-IN') : '—' },
                   { icon: Calendar, label: 'Joining Date', value: emp.joining_date || '—' },
                   { icon: Calendar, label: 'Probation End', value: emp.probation_end_date || '—' },
+                  { icon: FileText, label: 'Aadhaar No', value: emp.aadhaar_no || '—' },
+                  { icon: FileText, label: 'PAN Card', value: emp.pan_no || '—' },
+                  { icon: Landmark, label: 'Bank Name', value: emp.bank_name || '—' },
+                  { icon: CreditCard, label: 'Account No', value: emp.account_no || '—' },
+                  { icon: CreditCard, label: 'IFSC Code', value: emp.ifsc_code || '—' },
+                  { icon: MapPin, label: 'Address (C)', value: emp.current_address || '—' },
+                  { icon: MapPin, label: 'Address (P)', value: emp.permanent_address || '—' },
+                  { icon: PhoneCall, label: 'Emergency', value: emp.emergency_name ? `${emp.emergency_name} (${emp.emergency_phone || '—'})` : '—' },
                 ].map(f => {
-                  const Icon = f.icon
+                  const Icon = f.icon || User
                   return (
                     <div key={f.label} className="flex items-center gap-3">
                       <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />

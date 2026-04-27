@@ -17,6 +17,15 @@ class EmployeeCreate(BaseModel):
     phone: Optional[str] = None
     photo_url: Optional[str] = None
     remarks: Optional[str] = None
+    aadhaar_no: Optional[str] = None
+    pan_no: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_no: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    current_address: Optional[str] = None
+    permanent_address: Optional[str] = None
+    emergency_name: Optional[str] = None
+    emergency_phone: Optional[str] = None
 
 
 class EmployeeUpdate(BaseModel):
@@ -31,6 +40,15 @@ class EmployeeUpdate(BaseModel):
     phone: Optional[str] = None
     photo_url: Optional[str] = None
     remarks: Optional[str] = None
+    aadhaar_no: Optional[str] = None
+    pan_no: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_no: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    current_address: Optional[str] = None
+    permanent_address: Optional[str] = None
+    emergency_name: Optional[str] = None
+    emergency_phone: Optional[str] = None
 
 
 class EmployeeResponse(BaseModel):
@@ -50,6 +68,15 @@ class EmployeeResponse(BaseModel):
     phone: Optional[str] = None
     photo_url: Optional[str] = None
     remarks: Optional[str] = None
+    aadhaar_no: Optional[str] = None
+    pan_no: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_no: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    current_address: Optional[str] = None
+    permanent_address: Optional[str] = None
+    emergency_name: Optional[str] = None
+    emergency_phone: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

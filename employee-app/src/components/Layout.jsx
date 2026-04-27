@@ -4,7 +4,7 @@
  */
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Fingerprint, History, LogOut, Wifi, WifiOff, FileText, Wallet } from 'lucide-react'
+import { Fingerprint, History, LogOut, Wifi, WifiOff, FileText, Wallet, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 export default function Layout({ children }) {
@@ -104,6 +104,16 @@ export default function Layout({ children }) {
           >
             <Wallet className="w-6 h-6" />
             <span className="text-xs mt-1 font-medium">Salary</span>
+          </Link>
+          <Link
+            to="/profile"
+            id="nav-profile"
+            className={`flex-1 flex flex-col items-center py-3 transition ${
+              location.pathname === '/profile' ? 'text-sky-500' : 'text-gray-400'
+            }`}
+          >
+            <User className="w-6 h-6" />
+            <span className="text-xs mt-1 font-medium">Profile</span>
           </Link>
         </div>
       </nav>

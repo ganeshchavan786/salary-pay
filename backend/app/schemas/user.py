@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from app.models.user import UserRole
+from app.schemas.employee import EmployeeResponse
 
 
 class UserCreate(BaseModel):
@@ -23,6 +24,7 @@ class UserResponse(BaseModel):
     emp_id: Optional[str] = None  # emp_id already present — Bug #1 resolved
     is_active: bool
     created_at: datetime
+    employee: Optional[EmployeeResponse] = None
     
     class Config:
         from_attributes = True

@@ -31,6 +31,18 @@ class Employee(Base):
     phone = Column(String(20), nullable=True)
     photo_url = Column(Text, nullable=True)
     remarks   = Column(Text, nullable=True)
+    
+    # New Profile Fields
+    aadhaar_no = Column(String(20), nullable=True)
+    pan_no = Column(String(20), nullable=True)
+    bank_name = Column(String(100), nullable=True)
+    account_no = Column(String(50), nullable=True)
+    ifsc_code = Column(String(20), nullable=True)
+    current_address = Column(Text, nullable=True)
+    permanent_address = Column(Text, nullable=True)
+    emergency_name = Column(String(100), nullable=True)
+    emergency_phone = Column(String(20), nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

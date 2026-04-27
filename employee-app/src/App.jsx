@@ -10,6 +10,7 @@ import Attendance from './pages/Attendance'
 import History from './pages/History'
 import MyLeaves from './pages/MyLeaves'
 import MySalary from './pages/MySalary'
+import Profile from './pages/Profile'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -63,6 +64,13 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <MySalary />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <Layout>
+            <Profile />
           </Layout>
         </ProtectedRoute>
       } />

@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import timedelta
+from sqlalchemy.orm import selectinload
 from jose import jwt, JWTError
 
 from app.database import get_db
@@ -33,7 +34,11 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(User).where(User.username == form_data.username))
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.employee))
+        .where(User.username == form_data.username)
+    )
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(form_data.password, user.password_hash):
@@ -161,8 +166,18 @@ async def refresh_token_endpoint(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
-    return UserResponse.model_validate(current_user)
+async def get_current_user_info(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Re-fetch with employee relationship if needed
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.employee))
+        .where(User.id == current_user.id)
+    )
+    user = result.scalar_one()
+    return UserResponse.model_validate(user)
 
 
 @router.post("/register", response_model=UserResponse)
