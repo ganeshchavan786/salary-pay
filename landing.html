@@ -1,460 +1,233 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRMS — Salary Pay Portal</title>
-  <meta name="description" content="Modern HR Management System with Payroll, Attendance & Employee Self-Service">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --primary: #4f46e5;
-      --primary-dark: #4338ca;
-      --sky: #0ea5e9;
-      --sky-dark: #0284c7;
-      --green: #10b981;
-      --green-dark: #059669;
-      --text: #111827;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --bg: #f8fafc;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ── Hero Section ─────────────────────── */
-    .hero {
-      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #0ea5e9 100%);
-      color: white;
-      text-align: center;
-      padding: 4rem 1.5rem 5rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.2);
-      padding: 6px 16px;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      margin-bottom: 1.5rem;
-      position: relative;
-    }
-
-    .hero-badge .dot {
-      width: 8px; height: 8px;
-      background: #4ade80;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
-    }
-
-    .hero h1 {
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 800;
-      line-height: 1.15;
-      margin-bottom: 1rem;
-      position: relative;
-    }
-
-    .hero h1 span {
-      background: linear-gradient(90deg, #a5f3fc, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .hero p {
-      font-size: 1.1rem;
-      color: rgba(255,255,255,0.75);
-      max-width: 480px;
-      margin: 0 auto 2.5rem;
-      position: relative;
-    }
-
-    /* ── Stats Row ────────────────────────── */
-    .stats {
-      display: flex;
-      justify-content: center;
-      gap: 2.5rem;
-      flex-wrap: wrap;
-      position: relative;
-    }
-
-    .stat {
-      text-align: center;
-    }
-
-    .stat-num {
-      font-size: 1.8rem;
-      font-weight: 800;
-      background: linear-gradient(90deg, #a5f3fc, #c4b5fd);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .stat-label {
-      font-size: 0.75rem;
-      color: rgba(255,255,255,0.55);
-      margin-top: 2px;
-    }
-
-    /* ── Card Section ─────────────────────── */
-    .cards-section {
-      max-width: 960px;
-      margin: -2.5rem auto 0;
-      padding: 0 1.25rem 4rem;
-      position: relative;
-      z-index: 10;
-    }
-
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.25rem;
-    }
-
-    .card {
-      background: white;
-      border-radius: 1.25rem;
-      padding: 2rem 1.75rem;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      border: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 36px rgba(0,0,0,0.12);
-    }
-
-    .card-icon {
-      width: 54px; height: 54px;
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.6rem;
-    }
-
-    .card-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .card-desc {
-      font-size: 0.85rem;
-      color: var(--muted);
-      line-height: 1.6;
-      flex: 1;
-    }
-
-    .card-features {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .card-features li {
-      font-size: 0.78rem;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .card-features li::before {
-      content: '✓';
-      font-weight: 700;
-      font-size: 0.7rem;
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .btn-card {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 0.85rem 1.25rem;
-      border-radius: 0.75rem;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.9rem;
-      transition: all 0.2s;
-      border: none;
-      cursor: pointer;
-      margin-top: 0.25rem;
-    }
-
-    .btn-card:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn-card:active { transform: translateY(0); }
-
-    /* Card variants */
-    .card-admin .card-icon { background: #eef2ff; }
-    .card-admin .btn-card { background: linear-gradient(90deg, #4f46e5, #6366f1); color: white; }
-    .card-admin .card-features li::before { background: #eef2ff; color: #4f46e5; }
-
-    .card-employee .card-icon { background: #f0f9ff; }
-    .card-employee .btn-card { background: linear-gradient(90deg, #0ea5e9, #0284c7); color: white; }
-    .card-employee .card-features li::before { background: #f0f9ff; color: #0ea5e9; }
-
-    .card-face .card-icon { background: #f0fdf4; }
-    .card-face .btn-card { background: linear-gradient(90deg, #10b981, #059669); color: white; }
-    .card-face .card-features li::before { background: #f0fdf4; color: #10b981; }
-
-    /* ── Features Row ─────────────────────── */
-    .features {
-      background: white;
-      border-top: 1px solid var(--border);
-      padding: 3rem 1.25rem;
-    }
-
-    .features-inner {
-      max-width: 800px;
-      margin: 0 auto;
-      text-align: center;
-    }
-
-    .features-inner h2 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .features-inner p {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin-bottom: 2.5rem;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1.25rem;
-    }
-
-    .feature-item {
-      padding: 1.25rem;
-      border-radius: 1rem;
-      background: var(--bg);
-      border: 1px solid var(--border);
-    }
-
-    .feature-item .fi-icon {
-      font-size: 1.75rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .feature-item h3 {
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-
-    .feature-item p {
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin: 0;
-    }
-
-    /* ── Footer ───────────────────────────── */
-    footer {
-      margin-top: auto;
-      text-align: center;
-      padding: 1.5rem;
-      font-size: 0.78rem;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
-      background: white;
-    }
-
-    /* ── Responsive ───────────────────────── */
-    @media (max-width: 640px) {
-      .hero { padding: 3rem 1.25rem 4rem; }
-      .stats { gap: 1.5rem; }
-      .stat-num { font-size: 1.4rem; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salary Pay — Premium HRMS & Payroll Solution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#4f46e5',
+                        secondary: '#0ea5e9',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .dropdown-animate {
+            transform-origin: top right;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .group:hover .dropdown-animate {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-900 selection:bg-indigo-100 selection:text-indigo-700">
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="hero-badge">
-      <div class="dot"></div>
-      System Online
-    </div>
-    <h1>
-      Smart <span>HR Management</span><br>
-      Made Simple
-    </h1>
-    <p>Complete payroll, attendance and employee self-service — all in one platform.</p>
-    <div class="stats">
-      <div class="stat">
-        <div class="stat-num">3</div>
-        <div class="stat-label">Apps in One</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">GPS</div>
-        <div class="stat-label">Attendance</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">PWA</div>
-        <div class="stat-label">Installable</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">Real‑time</div>
-        <div class="stat-label">Reports</div>
-      </div>
-    </div>
-  </section>
+    <!-- NAVIGATION -->
+    <nav class="fixed top-0 w-full z-[100] glass-nav border-b border-slate-200/60">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <!-- Logo -->
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-200">
+                        <i data-lucide="briefcase" class="text-white w-6 h-6"></i>
+                    </div>
+                    <span class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-sky-600 bg-clip-text text-transparent">
+                        Salary Pay
+                    </span>
+                </div>
 
-  <!-- CARDS -->
-  <section class="cards-section">
-    <div class="cards-grid">
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#home" class="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">Home</a>
+                    <a href="#features" class="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">Features</a>
+                    <a href="#about" class="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">About</a>
+                    <a href="#contact" class="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">Contact</a>
+                    
+                    <!-- Login Dropdown -->
+                    <div class="relative group">
+                        <button class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95">
+                            Login Portal
+                            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-hover:rotate-180"></i>
+                        </button>
+                        
+                        <!-- Invisible bridge to keep hover active -->
+                        <div class="dropdown-animate absolute right-0 top-full pt-2 w-72 opacity-0 invisible scale-95 pointer-events-none group-hover:pointer-events-auto z-50">
+                            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 p-2">
+                                <a href="/admin/" class="flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                                    <div class="bg-indigo-50 p-2 rounded-lg group-hover/item:bg-indigo-100"><i data-lucide="shield-check" class="text-indigo-600 w-5 h-5"></i></div>
+                                    <div><p class="font-bold text-sm">Admin Portal</p><p class="text-[11px] text-slate-500">Full HR & Payroll Control</p></div>
+                                </a>
+                                <a href="/employee/" class="flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                                    <div class="bg-sky-50 p-2 rounded-lg group-hover/item:bg-sky-100"><i data-lucide="user" class="text-sky-600 w-5 h-5"></i></div>
+                                    <div><p class="font-bold text-sm">Employee Login</p><p class="text-[11px] text-slate-500">Attendance & Payslips</p></div>
+                                </a>
+                                <a href="/face/" class="flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 transition-colors group/item">
+                                    <div class="bg-emerald-50 p-2 rounded-lg group-hover/item:bg-emerald-100"><i data-lucide="camera" class="text-emerald-600 w-5 h-5"></i></div>
+                                    <div><p class="font-bold text-sm">Face Scan</p><p class="text-[11px] text-slate-500">Kiosk Mode Terminal</p></div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-      <!-- Admin Panel -->
-      <div class="card card-admin">
-        <div class="card-icon">🔐</div>
-        <div>
-          <div class="card-title">Admin Panel</div>
-          <div class="card-desc">Full HR management for administrators. Manage payroll, employees, reports and more.</div>
+                <!-- Mobile Button -->
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="p-2 text-slate-600"><i data-lucide="menu" class="w-7 h-7"></i></button>
+                </div>
+            </div>
         </div>
-        <ul class="card-features">
-          <li>Payroll & Salary Slips</li>
-          <li>Attendance Reports</li>
-          <li>Leave Management</li>
-          <li>Employee Records</li>
-        </ul>
-        <a href="/admin/" class="btn-card" id="admin-panel-btn">
-          Open Admin Panel →
-        </a>
-      </div>
 
-      <!-- Employee App -->
-      <div class="card card-employee">
-        <div class="card-icon">📱</div>
-        <div>
-          <div class="card-title">Employee Attendance</div>
-          <div class="card-desc">GPS + Selfie based attendance for employees. Installable on mobile as an app.</div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-slate-200 p-4">
+            <div class="flex flex-col gap-3 text-center">
+                <a href="#home" class="font-bold text-slate-700 py-2">Home</a>
+                <a href="#features" class="font-bold text-slate-700 py-2">Features</a>
+                <a href="#about" class="font-bold text-slate-700 py-2">About</a>
+                <a href="#contact" class="font-bold text-slate-700 py-2">Contact</a>
+                <hr class="my-2">
+                <a href="/admin/" class="p-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold">Admin Portal</a>
+                <a href="/employee/" class="p-3 bg-sky-50 text-sky-700 rounded-xl font-bold">Employee Login</a>
+                <a href="/face/" class="p-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold">Face Scan</a>
+            </div>
         </div>
-        <ul class="card-features">
-          <li>GPS Location Capture</li>
-          <li>Selfie Check-In / Out</li>
-          <li>View Salary Slips</li>
-          <li>Apply for Leaves</li>
-        </ul>
-        <a href="/employee/" class="btn-card" id="employee-app-btn">
-          Employee Login →
-        </a>
-      </div>
+    </nav>
 
-      <!-- Face Scan -->
-      <div class="card card-face">
-        <div class="card-icon">📷</div>
-        <div>
-          <div class="card-title">Face Scan Attendance</div>
-          <div class="card-desc">Shared kiosk device attendance using face recognition — no login required.</div>
+    <!-- HERO -->
+    <section id="home" class="pt-32 pb-20 md:pt-48 md:pb-32 bg-[radial-gradient(circle_at_top_right,_#f1f5f9_0%,_white_50%)]">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <span class="inline-block py-2 px-6 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold uppercase mb-6 tracking-widest">Next-Gen HRMS</span>
+            <h1 class="text-5xl md:text-7xl font-extrabold text-slate-900 mb-6 tracking-tighter leading-tight">Managing Your <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">Workforce</span> Smarter</h1>
+            <p class="text-lg text-slate-500 max-w-2xl mx-auto mb-10">Automated payroll, GPS-verified attendance, and AI-powered face recognition — all in one unified platform.</p>
+            <div class="flex justify-center gap-4">
+                <a href="/admin/" class="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Get Started</a>
+                <a href="#features" class="px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-bold hover:bg-slate-50">Explore Features</a>
+            </div>
         </div>
-        <ul class="card-features">
-          <li>Automatic Face Detection</li>
-          <li>Liveness Check</li>
-          <li>Offline Capable</li>
-          <li>Kiosk Mode</li>
-        </ul>
-        <a href="/face/" class="btn-card" id="face-scan-btn">
-          Open Face Scanner →
-        </a>
-      </div>
+    </section>
 
-    </div>
-  </section>
+    <!-- FEATURES -->
+    <section id="features" class="py-24 bg-white border-t border-slate-100">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-16"><h2 class="text-4xl font-extrabold text-slate-900 mb-2">Everything You Need</h2><div class="w-20 h-1.5 bg-indigo-600 mx-auto rounded-full"></div></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- 1 -->
+                <div class="p-8 bg-slate-50 rounded-[32px] border border-transparent hover:border-indigo-100 hover:bg-white transition-all shadow-sm hover:shadow-2xl">
+                    <div class="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-100"><i data-lucide="wallet" class="text-white w-7 h-7"></i></div>
+                    <h3 class="text-xl font-bold mb-3">Automated Payroll</h3>
+                    <p class="text-slate-500 text-sm mb-6">Automate calculations, tax compliance, and download PDF slips instantly.</p>
+                </div>
+                <!-- 2 -->
+                <div class="p-8 bg-slate-50 rounded-[32px] border border-transparent hover:border-sky-100 hover:bg-white transition-all shadow-sm hover:shadow-2xl">
+                    <div class="w-14 h-14 bg-sky-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-sky-100"><i data-lucide="map-pin" class="text-white w-7 h-7"></i></div>
+                    <h3 class="text-xl font-bold mb-3">GPS Attendance</h3>
+                    <p class="text-slate-500 text-sm mb-6">Location-verified check-in with selfie capture for remote teams.</p>
+                </div>
+                <!-- 3 -->
+                <div class="p-8 bg-slate-50 rounded-[32px] border border-transparent hover:border-emerald-100 hover:bg-white transition-all shadow-sm hover:shadow-2xl">
+                    <div class="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-emerald-100"><i data-lucide="scan-face" class="text-white w-7 h-7"></i></div>
+                    <h3 class="text-xl font-bold mb-3">Face Recognition</h3>
+                    <p class="text-slate-500 text-sm mb-6">AI-powered contactless attendance with high accuracy terminal.</p>
+                </div>
+                <!-- 4 -->
+                <div class="p-8 bg-slate-50 rounded-[32px] border border-transparent hover:border-orange-100 hover:bg-white transition-all shadow-sm hover:shadow-2xl">
+                    <div class="w-14 h-14 bg-orange-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-orange-100"><i data-lucide="calendar-days" class="text-white w-7 h-7"></i></div>
+                    <h3 class="text-xl font-bold mb-3">Leave Management</h3>
+                    <p class="text-slate-500 text-sm mb-6">Manage leave applications and approvals workflow with ease.</p>
+                </div>
+                <!-- 5 -->
+                <div class="p-8 bg-slate-50 rounded-[32px] border border-transparent hover:border-pink-100 hover:bg-white transition-all shadow-sm hover:shadow-2xl">
+                    <div class="w-14 h-14 bg-pink-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-pink-100"><i data-lucide="line-chart" class="text-white w-7 h-7"></i></div>
+                    <h3 class="text-xl font-bold mb-3">Live Reporting</h3>
+                    <p class="text-slate-500 text-sm mb-6">Real-time attendance, overtime, and labor cost dashboards.</p>
+                </div>
+                <!-- 6 -->
+                <div class="p-8 bg-slate-50 rounded-[32px] border border-transparent hover:border-blue-100 hover:bg-white transition-all shadow-sm hover:shadow-2xl">
+                    <div class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-100"><i data-lucide="smartphone" class="text-white w-7 h-7"></i></div>
+                    <h3 class="text-xl font-bold mb-3">Mobile PWA</h3>
+                    <p class="text-slate-500 text-sm mb-6">Install on any device. Fast, reliable, and offline-capable app.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <!-- FEATURES -->
-  <section class="features">
-    <div class="features-inner">
-      <h2>Everything you need in one platform</h2>
-      <p>Built for small and medium businesses — fast, reliable, and mobile-first</p>
-      <div class="features-grid">
-        <div class="feature-item">
-          <div class="fi-icon">💰</div>
-          <h3>Payroll Engine</h3>
-          <p>Automated salary calculations with OT, HRA & deductions</p>
+    <!-- ABOUT -->
+    <section id="about" class="py-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center gap-16">
+            <div class="flex-1 text-left">
+                <span class="text-indigo-600 font-bold text-sm uppercase mb-4 block">About Us</span>
+                <h2 class="text-4xl font-extrabold text-slate-900 mb-6">Redefining Workforce Management</h2>
+                <p class="text-slate-500 text-lg mb-8 leading-relaxed">Salary Pay was built to simplify complex HR processes. Our platform combines AI with user-centric design to provide a seamless experience for employers and employees alike.</p>
+                <div class="grid grid-cols-2 gap-8">
+                    <div><p class="text-3xl font-extrabold text-indigo-600">500+</p><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Happy Clients</p></div>
+                    <div><p class="text-3xl font-extrabold text-indigo-600">99.9%</p><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Uptime</p></div>
+                </div>
+            </div>
+            <div class="flex-1"><img src="https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&q=80&w=800" class="rounded-[40px] shadow-2xl"></div>
         </div>
-        <div class="feature-item">
-          <div class="fi-icon">📍</div>
-          <h3>GPS Attendance</h3>
-          <p>Location-verified check-in with selfie capture</p>
-        </div>
-        <div class="feature-item">
-          <div class="fi-icon">📊</div>
-          <h3>Live Reports</h3>
-          <p>Real-time attendance, overtime and payroll reports</p>
-        </div>
-        <div class="feature-item">
-          <div class="fi-icon">📱</div>
-          <h3>PWA App</h3>
-          <p>Install on mobile — works offline too</p>
-        </div>
-        <div class="feature-item">
-          <div class="fi-icon">🔒</div>
-          <h3>Secure Login</h3>
-          <p>Role-based access for admin and employees</p>
-        </div>
-        <div class="feature-item">
-          <div class="fi-icon">📄</div>
-          <h3>PDF Slips</h3>
-          <p>Download professional salary slips instantly</p>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- FOOTER -->
-  <footer>
-    © 2026 HRMS — Salary Pay System &nbsp;|&nbsp; All rights reserved
-  </footer>
+    <!-- CONTACT -->
+    <section id="contact" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div class="text-left space-y-8">
+                <h2 class="text-4xl font-extrabold text-slate-900 mb-4">Get In Touch</h2>
+                <div class="flex gap-6"><div class="bg-indigo-50 p-4 rounded-2xl"><i data-lucide="mail" class="text-indigo-600"></i></div><div><h4 class="font-bold">Email Us</h4><p class="text-slate-500 italic">support@salarypay.com</p></div></div>
+                <div class="flex gap-6"><div class="bg-sky-50 p-4 rounded-2xl"><i data-lucide="phone" class="text-sky-600"></i></div><div><h4 class="font-bold">Call Us</h4><p class="text-slate-500">+91 98765 43210</p></div></div>
+                <div class="flex gap-6"><div class="bg-emerald-50 p-4 rounded-2xl"><i data-lucide="map-pin" class="text-emerald-600"></i></div><div><h4 class="font-bold">Office</h4><p class="text-slate-500">Vrushali Infotech, Mumbai, Maharashtra.</p></div></div>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-[32px] border border-slate-100 shadow-xl">
+                <form class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" placeholder="Name" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                        <input type="email" placeholder="Email" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                    </div>
+                    <textarea placeholder="Message" rows="4" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"></textarea>
+                    <button class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold shadow-lg">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </section>
 
+    <footer class="bg-slate-900 py-10 text-center text-slate-500 text-xs">
+        <div class="flex justify-center gap-6 mb-4">
+            <a href="#"><i data-lucide="twitter" class="w-5 h-5"></i></a>
+            <a href="#"><i data-lucide="linkedin" class="w-5 h-5"></i></a>
+            <a href="#"><i data-lucide="github" class="w-5 h-5"></i></a>
+        </div>
+        © 2026 Salary Pay HRMS System. All rights reserved.
+    </footer>
+
+    <script>
+        // Initialization
+        window.addEventListener('load', () => {
+            lucide.createIcons();
+        });
+
+        const mobileBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileBtn.onclick = () => {
+            mobileMenu.classList.toggle('hidden');
+            lucide.createIcons();
+        };
+    </script>
 </body>
 </html>
