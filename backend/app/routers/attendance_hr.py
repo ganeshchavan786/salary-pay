@@ -317,6 +317,8 @@ def _att_to_dict(a: AttendanceDaily) -> dict:
         "is_late_mark": a.is_late_mark or False,
         "is_half_late_mark": a.is_half_late_mark or False,
         "is_half_day": a.is_half_day or False,
+        "total_working_hours": getattr(a, 'total_working_hours', 0.0),
+        "is_incomplete": getattr(a, 'is_incomplete', False),
         "is_overridden": a.is_overridden or False,
         "override_note": a.override_note,
     }

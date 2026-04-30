@@ -36,6 +36,7 @@ export default function Attendance() {
   const [lastResult, setLastResult] = useState(null)
   const [todayRecords, setTodayRecords] = useState([])
   const [loadingRecords, setLoadingRecords] = useState(true)
+  const [todaySummary, setTodaySummary] = useState(null)
 
   // ── GPS: fetch location on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -69,11 +70,21 @@ export default function Attendance() {
     try {
       setLoadingRecords(true)
       const today = format(new Date(), 'yyyy-MM-dd')
+      
+      // Fetch raw punches
       const res = await attendanceApi.getMy({ start_date: today, end_date: today, limit: 20 })
       const records = (res.data.records || res.data || []).filter(
         r => r.emp_id === employee?.emp_id
       )
       setTodayRecords(records)
+
+      // Fetch daily summary (for working hours)
+      const summaryRes = await attendanceApi.getMonthlyAll({ month: new Date().getMonth() + 1, year: new Date().getFullYear() })
+      const mySummary = summaryRes.data?.employees_data?.find(e => e.emp_id === employee?.emp_id)
+      if (mySummary) {
+        const todayData = mySummary.days.find(d => d.date === today)
+        setTodaySummary(todayData)
+      }
     } catch (e) {
       console.log('Could not load today records:', e)
     } finally {
@@ -225,10 +236,26 @@ export default function Attendance() {
         <p className="text-gray-400 text-sm">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
       </div>
 
-      {/* Employee Info */}
-      <div className="bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-2xl p-4 mb-5 shadow-lg">
-        <p className="font-bold text-lg">{employee?.name || employee?.username}</p>
-        <p className="text-sky-100 text-sm">{employee?.emp_code || 'Employee'}</p>
+      {/* Employee Info & Stats */}
+      <div className="bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-2xl p-5 mb-5 shadow-lg relative overflow-hidden">
+        <div className="relative z-10">
+          <p className="font-bold text-xl">{employee?.name || employee?.username}</p>
+          <p className="text-sky-100 text-sm mb-4">{employee?.emp_code || 'Employee'}</p>
+          
+          <div className="flex gap-4">
+            <div className="bg-white/20 rounded-xl p-3 flex-1 backdrop-blur-sm">
+              <p className="text-[10px] uppercase font-bold text-sky-100">Today's Hours</p>
+              <p className="text-xl font-black">{todaySummary?.total_working_hours || '0.00'} <span className="text-sm font-normal">hrs</span></p>
+            </div>
+            <div className="bg-white/20 rounded-xl p-3 flex-1 backdrop-blur-sm">
+              <p className="text-[10px] uppercase font-bold text-sky-100">Status</p>
+              <p className="text-sm font-bold uppercase tracking-wide">
+                {nextType === ATTENDANCE_TYPE.CHECK_IN ? 'On Break / Out' : 'Working'}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
       </div>
 
       {/* GPS Status */}

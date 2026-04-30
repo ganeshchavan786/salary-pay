@@ -551,6 +551,7 @@ export default function Attendance() {
                       <th className="px-4 py-3 text-left">Day</th>
                       <th className="px-4 py-3 text-left">Check In</th>
                       <th className="px-4 py-3 text-left">Check Out</th>
+                      <th className="px-4 py-3 text-left">Work Hours</th>
                       <th className="px-4 py-3 text-left">Status</th>
                       <th className="px-4 py-3 text-left">Late Mark</th>
                       <th className="px-4 py-3 text-left">Override</th>
@@ -603,7 +604,15 @@ export default function Attendance() {
                           </td>
                           <td className="px-4 py-2.5 text-gray-400 text-xs">{dayName}</td>
                           <td className="px-4 py-2.5 text-gray-600">{r.check_in ? r.check_in.slice(11,16) : '—'}</td>
-                          <td className="px-4 py-2.5 text-gray-600">{r.check_out ? r.check_out.slice(11,16) : '—'}</td>
+                          <td className="px-4 py-2.5 text-gray-600">
+                            {r.check_out ? r.check_out.slice(11,16) : '—'}
+                            {r.is_incomplete && (
+                              <span className="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded font-bold">MISSING</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 font-bold text-blue-600">
+                            {r.total_working_hours > 0 ? `${r.total_working_hours}h` : '—'}
+                          </td>
                           <td className="px-4 py-2.5">
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status] || 'bg-gray-100 text-gray-600'}`}>
                               {r.status}

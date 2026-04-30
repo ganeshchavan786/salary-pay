@@ -36,47 +36,35 @@ logger = logging.getLogger(__name__)
 
 async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]] = None):
     """
-    Background task: sync raw face-recognition attendance → attendance_daily table.
-    Skips records where is_overridden=True (manual HR entries take precedence).
+    Background task: sync all raw attendance punches → attendance_daily table.
+    Calculates cumulative working hours for multi-punch (breaks).
     """
     async with AsyncSessionLocal() as db:
         try:
-            # Fetch CHECK_IN records
-            checkin_query = select(Attendance).where(
-                and_(
-                    Attendance.date == target_date,
-                    Attendance.attendance_type == AttendanceType.CHECK_IN,
-                )
-            )
+            # Fetch ALL records for the day, ordered by time
+            query = select(Attendance).where(Attendance.date == target_date).order_by(Attendance.emp_id, Attendance.time)
             if emp_ids:
-                checkin_query = checkin_query.where(Attendance.emp_id.in_(emp_ids))
-            checkin_result = await db.execute(checkin_query)
-            checkin_records = checkin_result.scalars().all()
+                query = query.where(Attendance.emp_id.in_(emp_ids))
+            
+            result = await db.execute(query)
+            all_punches = result.scalars().all()
 
-            # Fetch CHECK_OUT records
-            checkout_query = select(Attendance).where(
-                and_(
-                    Attendance.date == target_date,
-                    Attendance.attendance_type == AttendanceType.CHECK_OUT,
-                )
-            )
-            if emp_ids:
-                checkout_query = checkout_query.where(Attendance.emp_id.in_(emp_ids))
-            checkout_result = await db.execute(checkout_query)
-            checkout_records = checkout_result.scalars().all()
-
-            # Build checkout lookup: emp_id → checkout time
-            checkout_map = {r.emp_id: r.time for r in checkout_records}
+            # Group punches by employee
+            emp_punches = {}
+            for p in all_punches:
+                if p.emp_id not in emp_punches:
+                    emp_punches[p.emp_id] = []
+                emp_punches[p.emp_id].append(p)
 
             synced = 0
             skipped = 0
 
-            for checkin in checkin_records:
-                # Check if existing daily record is overridden (HR manual entry)
+            for emp_id, punches in emp_punches.items():
+                # Check if existing daily record is overridden
                 existing_result = await db.execute(
                     select(AttendanceDaily).where(
                         and_(
-                            AttendanceDaily.emp_id == checkin.emp_id,
+                            AttendanceDaily.emp_id == emp_id,
                             AttendanceDaily.date == target_date,
                         )
                     )
@@ -87,21 +75,43 @@ async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]]
                     skipped += 1
                     continue
 
-                # Calculate times
-                check_in_dt = datetime.combine(target_date, checkin.time)
-                checkout_time = checkout_map.get(checkin.emp_id)
-                check_out_dt = datetime.combine(target_date, checkout_time) if checkout_time else None
+                total_seconds = 0.0
+                first_in = None
+                last_out = None
+                current_in_time = None
 
-                # Calculate late mark
-                late_mark = calculate_late_mark_type(checkin.time)
+                for p in punches:
+                    p_datetime = datetime.combine(target_date, p.time)
+                    
+                    if p.attendance_type == AttendanceType.CHECK_IN:
+                        if first_in is None:
+                            first_in = p_datetime
+                        current_in_time = p_datetime
+                    
+                    elif p.attendance_type == AttendanceType.CHECK_OUT:
+                        last_out = p_datetime
+                        if current_in_time:
+                            diff = (p_datetime - current_in_time).total_seconds()
+                            if diff > 0:
+                                total_seconds += diff
+                            current_in_time = None # Reset for next pair
+
+                total_hours = round(total_seconds / 3600, 2)
+                
+                # Late mark based on first check-in
+                late_mark = LateMarkType.NONE
+                if first_in:
+                    late_mark = calculate_late_mark_type(first_in.time())
+                
                 is_late = late_mark == LateMarkType.LATE
                 is_half_late = late_mark == LateMarkType.HALF_LATE
                 is_half_day = late_mark == LateMarkType.HALF_DAY
                 status = AttendanceStatus.HALFDAY if is_half_day else AttendanceStatus.PRESENT
 
                 if existing:
-                    existing.check_in = check_in_dt
-                    existing.check_out = check_out_dt
+                    existing.check_in = first_in
+                    existing.check_out = last_out
+                    existing.total_working_hours = total_hours
                     existing.status = status
                     existing.late_mark_type = late_mark
                     existing.is_late_mark = is_late
@@ -111,10 +121,11 @@ async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]]
                 else:
                     db.add(AttendanceDaily(
                         id=str(uuid.uuid4()),
-                        emp_id=checkin.emp_id,
+                        emp_id=emp_id,
                         date=target_date,
-                        check_in=check_in_dt,
-                        check_out=check_out_dt,
+                        check_in=first_in,
+                        check_out=last_out,
+                        total_working_hours=total_hours,
                         status=status,
                         late_mark_type=late_mark,
                         is_late_mark=is_late,
@@ -128,7 +139,7 @@ async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]]
             return {"synced": synced, "skipped": skipped}
         except Exception as e:
             await db.rollback()
-            print(f"[sync_to_daily] Error for {target_date}: {e}")
+            logger.error(f"[sync_to_daily] Error for {target_date}: {e}")
             return {"synced": 0, "skipped": 0}
 
 
@@ -778,6 +789,8 @@ async def get_monthly_all(
                 "late_mark_type": late_mark_type,
                 "check_in": check_in.strftime("%H:%M") if check_in else None,
                 "check_out": check_out.strftime("%H:%M") if check_out else None,
+                "total_working_hours": rec.get("total_working_hours", 0.0),
+                "is_incomplete": rec.get("is_incomplete", False),
                 "is_overridden": rec.get("is_overridden", False),
             })
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Date, Text, ForeignKey, Enum as SQLEnum, UniqueConstraint
+from sqlalchemy import Column, String, Boolean, DateTime, Date, Text, ForeignKey, Enum as SQLEnum, UniqueConstraint, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -32,6 +32,8 @@ class AttendanceDaily(Base):
     is_late_mark = Column(Boolean, default=False)
     is_half_late_mark = Column(Boolean, default=False)
     is_half_day = Column(Boolean, default=False)
+    total_working_hours = Column(Float, default=0.0)
+    is_incomplete = Column(Boolean, default=False)
     is_overridden = Column(Boolean, default=False)
     override_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     override_note = Column(Text, nullable=True)

@@ -32,10 +32,28 @@ async def lifespan(app: FastAPI):
     await init_db()
     await create_default_admin()
     # Seed default attendance policy if not exists
-    from app.database import AsyncSessionLocal
-    from app.services.policy_service import seed_default_policy
     async with AsyncSessionLocal() as db:
         await seed_default_policy(db)
+    
+    # Start Background Task for Attendance Cleanup
+    import asyncio
+    from app.tasks.attendance_cleanup import auto_cleanup_missing_punches
+    
+    async def schedule_cleanup():
+        while True:
+            now = datetime.now()
+            # Run at 00:01 AM
+            if now.hour == 0 and now.minute == 1:
+                print(f"[{now}] Running scheduled attendance cleanup...")
+                await auto_cleanup_missing_punches()
+                # Sleep for 60 seconds to avoid multiple runs in the same minute
+                await asyncio.sleep(61)
+            # Check every 30 seconds
+            await asyncio.sleep(30)
+
+    # Run without blocking the main app
+    asyncio.create_task(schedule_cleanup())
+    
     yield
 
 
