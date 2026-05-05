@@ -31,6 +31,7 @@ class Attendance(Base):
     longitude = Column(Float, nullable=True)
     device_id = Column(String(100), nullable=True)
     photo = Column(Text, nullable=True)  # Base64 compressed image
+    source = Column(String(20), default="APP")  # APP | FACE | MANUAL
     sync_status = Column(SQLEnum(SyncStatus), default=SyncStatus.SYNCED)
     created_at = Column(DateTime, default=datetime.utcnow)
     synced_at = Column(DateTime, default=datetime.utcnow)

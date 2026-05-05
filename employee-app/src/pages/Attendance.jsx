@@ -66,17 +66,38 @@ export default function Attendance() {
     )
   }
 
+  const [missingCheckout, setMissingCheckout] = useState(null)
+
   async function fetchTodayRecords() {
     try {
       setLoadingRecords(true)
       const today = format(new Date(), 'yyyy-MM-dd')
       
-      // Fetch raw punches
+      // Fetch raw punches for today
       const res = await attendanceApi.getMy({ start_date: today, end_date: today, limit: 20 })
       const records = (res.data.records || res.data || []).filter(
         r => r.emp_id === employee?.emp_id
       )
       setTodayRecords(records)
+
+      // Fetch yesterday to check for missing check-out
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yestStr = format(yesterday, 'yyyy-MM-dd')
+      
+      try {
+        const yestRes = await attendanceApi.getMy({ start_date: yestStr, end_date: yestStr, limit: 20 })
+        const yestRecords = (yestRes.data.records || yestRes.data || []).filter(r => r.emp_id === employee?.emp_id)
+        if (yestRecords.length > 0) {
+          // Sort by time descending to get the last punch
+          const yestSorted = yestRecords.sort((a, b) => b.time.localeCompare(a.time))
+          if (yestSorted[0].attendance_type === ATTENDANCE_TYPE.CHECK_IN) {
+            setMissingCheckout(yestStr)
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch yesterday records for missing punch check')
+      }
 
       // Fetch daily summary (for working hours)
       const summaryRes = await attendanceApi.getMonthlyAll({ month: new Date().getMonth() + 1, year: new Date().getFullYear() })
@@ -222,7 +243,12 @@ export default function Attendance() {
   }
 
   // ── Determine next action ──────────────────────────────────────────────────
-  const sortedRecords = [...todayRecords].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
+  const validTodayRecords = todayRecords.filter(r => r.date === todayStr)
+  const sortedRecords = [...validTodayRecords].sort((a, b) => {
+    if (a.time && b.time) return b.time.localeCompare(a.time)
+    return new Date(b.created_at) - new Date(a.created_at)
+  })
   const lastRecord = sortedRecords[0]
   const nextType = !lastRecord || lastRecord.attendance_type === ATTENDANCE_TYPE.CHECK_OUT
     ? ATTENDANCE_TYPE.CHECK_IN
@@ -235,6 +261,21 @@ export default function Attendance() {
         <h2 className="text-xl font-bold text-gray-800">Mark Attendance</h2>
         <p className="text-gray-400 text-sm">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
       </div>
+
+      {/* Missing Punch Warning */}
+      {missingCheckout && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-5 text-center shadow-sm">
+          <p className="text-orange-700 font-bold flex items-center justify-center gap-2">
+            ⚠️ Missing Punch Alert!
+          </p>
+          <p className="text-orange-600 text-sm mt-1">
+            You forgot to Check-Out on <strong>{missingCheckout}</strong>.
+          </p>
+          <p className="text-orange-500 text-xs mt-1">
+            Please submit a missing punch request to HR. You can still check in for today.
+          </p>
+        </div>
+      )}
 
       {/* Employee Info & Stats */}
       <div className="bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-2xl p-5 mb-5 shadow-lg relative overflow-hidden">
@@ -302,27 +343,30 @@ export default function Attendance() {
 
       {/* Main Action Buttons */}
       {status === 'idle' && (
-        <div className="grid grid-cols-2 gap-4 mb-5">
-          <button
-            id="check-in-btn"
-            onClick={() => openCamera(ATTENDANCE_TYPE.CHECK_IN)}
-            disabled={!location || nextType !== ATTENDANCE_TYPE.CHECK_IN}
-            className="flex flex-col items-center justify-center gap-2 rounded-2xl py-8 font-bold text-white text-lg shadow-lg transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
-          >
-            <LogIn className="w-8 h-8" />
-            Check In
-          </button>
-          <button
-            id="check-out-btn"
-            onClick={() => openCamera(ATTENDANCE_TYPE.CHECK_OUT)}
-            disabled={!location || nextType !== ATTENDANCE_TYPE.CHECK_OUT}
-            className="flex flex-col items-center justify-center gap-2 rounded-2xl py-8 font-bold text-white text-lg shadow-lg transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}
-          >
-            <LogOut className="w-8 h-8" />
-            Check Out
-          </button>
+        <div className="flex flex-col gap-4 mb-5">
+          {nextType === ATTENDANCE_TYPE.CHECK_IN ? (
+            <button
+              id="check-in-btn"
+              onClick={() => openCamera(ATTENDANCE_TYPE.CHECK_IN)}
+              disabled={!location}
+              className="flex items-center justify-center gap-3 rounded-2xl py-6 font-bold text-white text-xl shadow-lg transition active:scale-95 disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+            >
+              <LogIn className="w-8 h-8" />
+              Check In
+            </button>
+          ) : (
+            <button
+              id="check-out-btn"
+              onClick={() => openCamera(ATTENDANCE_TYPE.CHECK_OUT)}
+              disabled={!location}
+              className="flex items-center justify-center gap-3 rounded-2xl py-6 font-bold text-white text-xl shadow-lg transition active:scale-95 disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}
+            >
+              <LogOut className="w-8 h-8" />
+              Check Out / Break
+            </button>
+          )}
         </div>
       )}
 

@@ -122,6 +122,26 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Attendance Rate Banner */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-5 mb-6 text-white shadow-lg">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-blue-100 text-sm font-medium">Today's Attendance Rate</p>
+            <p className="text-4xl font-black mt-1">{s.attendance_rate ?? 0}%</p>
+          </div>
+          <div className="text-right">
+            <p className="text-blue-100 text-xs">Present</p>
+            <p className="text-2xl font-bold">{s.present_today ?? 0} / {s.active_employees ?? 0}</p>
+          </div>
+        </div>
+        <div className="w-full bg-white/20 rounded-full h-2.5">
+          <div
+            className="bg-white rounded-full h-2.5 transition-all duration-1000"
+            style={{ width: `${s.attendance_rate ?? 0}%` }}
+          />
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {statCards.map((stat, index) => {
@@ -140,6 +160,25 @@ export default function Dashboard() {
             </div>
           )
         })}
+      </div>
+
+      {/* Live Analytics Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow p-4 border-l-4 border-yellow-400">
+          <p className="text-xs text-gray-500 mb-1">⏰ Late Comers Today</p>
+          <p className="text-3xl font-black text-yellow-600">{s.late_today ?? 0}</p>
+          <p className="text-xs text-gray-400 mt-1">employees came late</p>
+        </div>
+        <div className="bg-white rounded-xl shadow p-4 border-l-4 border-green-400">
+          <p className="text-xs text-gray-500 mb-1">⏱ Avg Work Hours Today</p>
+          <p className="text-3xl font-black text-green-600">{s.avg_work_hours_today ?? 0}h</p>
+          <p className="text-xs text-gray-400 mt-1">average across employees</p>
+        </div>
+        <div className="bg-white rounded-xl shadow p-4 border-l-4 border-orange-400">
+          <p className="text-xs text-gray-500 mb-1">🕐 OT Pending Approval</p>
+          <p className="text-3xl font-black text-orange-600">{s.ot_pending_count ?? 0}</p>
+          <p className="text-xs text-gray-400 mt-1">records waiting for approval</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

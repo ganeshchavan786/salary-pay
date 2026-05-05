@@ -66,3 +66,6 @@ temp/
 *.pem
 *.key
 secrets/
+license.json
+license_cache.json
+Releases/

@@ -39,6 +39,18 @@ function buildParams(filters) {
   }
 }
 
+function formatReportTime(v) {
+  if (!v) return '—'
+  if (typeof v === 'string' && v.includes('T')) {
+    const timePart = v.split('T')[1].replace('Z', '')
+    const [h, m] = timePart.split(':')
+    const d = new Date()
+    d.setHours(parseInt(h, 10), parseInt(m, 10), 0)
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  }
+  return new Date(v).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
 // Attendance Summary sub-tab
 function AttendanceSummaryTab({ filters }) {
   const params = buildParams(filters)
@@ -75,8 +87,8 @@ function WorkingHoursTab({ filters }) {
     { key: 'emp_code', label: 'Emp Code' },
     { key: 'name', label: 'Name' },
     { key: 'date', label: 'Date' },
-    { key: 'check_in', label: 'Check In', render: v => v ? new Date(v).toLocaleTimeString() : '—' },
-    { key: 'check_out', label: 'Check Out', render: v => v ? new Date(v).toLocaleTimeString() : '—' },
+    { key: 'check_in', label: 'Check In', render: formatReportTime },
+    { key: 'check_out', label: 'Check Out', render: formatReportTime },
     { key: 'working_hours', label: 'Working Hours', render: v => v != null ? `${v}h` : '—' },
     { key: 'is_missed_punch', label: 'Missed Punch', render: v => v ? <span className="text-red-500">Yes</span> : 'No' },
   ]
@@ -122,8 +134,8 @@ function InOutTab({ filters }) {
     { key: 'emp_code', label: 'Emp Code' },
     { key: 'name', label: 'Name' },
     { key: 'date', label: 'Date' },
-    { key: 'check_in', label: 'Check In', render: v => v ? new Date(v).toLocaleTimeString() : '—' },
-    { key: 'check_out', label: 'Check Out', render: v => v ? new Date(v).toLocaleTimeString() : '—' },
+    { key: 'check_in', label: 'Check In', render: formatReportTime },
+    { key: 'check_out', label: 'Check Out', render: formatReportTime },
     { key: 'shift_start_time', label: 'Shift Start' },
     { key: 'late_mark_status', label: 'Late Mark' },
     { key: 'is_missed_punch', label: 'Missed', render: v => v ? <span className="text-red-500">Yes</span> : 'No' },

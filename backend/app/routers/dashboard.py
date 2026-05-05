@@ -84,6 +84,39 @@ async def dashboard_summary(
 
     attendance_rate = round(present_today / active_employees * 100) if active_employees > 0 else 0
 
+    # OT Pending count (new)
+    ot_pending_result = await db.execute(
+        select(func.count(AttendanceDaily.id)).where(
+            and_(
+                AttendanceDaily.ot_hours > 0,
+                AttendanceDaily.ot_status == "PENDING",
+            )
+        )
+    )
+    ot_pending_count = ot_pending_result.scalar() or 0
+
+    # Late comers today (new)
+    late_result = await db.execute(
+        select(func.count(AttendanceDaily.id)).where(
+            and_(
+                AttendanceDaily.date == today,
+                AttendanceDaily.is_late_mark == True,
+            )
+        )
+    )
+    late_today = late_result.scalar() or 0
+
+    # Average working hours today (new)
+    avg_hours_result = await db.execute(
+        select(func.avg(AttendanceDaily.total_working_hours)).where(
+            and_(
+                AttendanceDaily.date == today,
+                AttendanceDaily.total_working_hours > 0,
+            )
+        )
+    )
+    avg_work_hours_today = round(avg_hours_result.scalar() or 0.0, 1)
+
     return {
         "total_employees": total_employees,
         "active_employees": active_employees,
@@ -93,6 +126,9 @@ async def dashboard_summary(
         "pending_leaves": pending_leaves,
         "new_joiners_this_month": new_joiners,
         "attendance_rate": attendance_rate,
+        "ot_pending_count": ot_pending_count,
+        "late_today": late_today,
+        "avg_work_hours_today": avg_work_hours_today,
     }
 
 

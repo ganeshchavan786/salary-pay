@@ -134,8 +134,11 @@ async def apply_overwrite(
         user_id = current_user.id
         user_name = getattr(current_user, "full_name", None) or getattr(current_user, "username", str(current_user.id))
     
-    # Capture old status for audit log
-    old_status = existing_record.status.value if existing_record.status else None
+    # Capture old values for comprehensive audit log
+    old_status = existing_record.status.value if existing_record.status else "None"
+    old_in = existing_record.check_in.strftime("%H:%M") if existing_record.check_in else "None"
+    old_out = existing_record.check_out.strftime("%H:%M") if existing_record.check_out else "None"
+    old_summary = f"Status: {old_status} | IN: {old_in} | OUT: {old_out}"
     
     # Update record fields
     if "status" in new_data:
@@ -159,19 +162,25 @@ async def apply_overwrite(
     existing_record.override_note = override_note or "Manual HR Overwrite"
     existing_record.updated_at = datetime.utcnow()
     
-    # Write audit log
-    new_status = new_data.get("status").value if "status" in new_data else existing_record.status.value
-    await write_audit_log(
-        db,
-        record_id=existing_record.id,
-        emp_id=existing_record.emp_id,
-        action="UPDATE",
-        field_name="status",
-        old_value=old_status,
-        new_value=new_status,
-        changed_by=user_id,
-        changed_by_name=user_name,
-        note=existing_record.override_note
-    )
+    # Capture new values
+    new_status = existing_record.status.value if existing_record.status else "None"
+    new_in = existing_record.check_in.strftime("%H:%M") if existing_record.check_in else "None"
+    new_out = existing_record.check_out.strftime("%H:%M") if existing_record.check_out else "None"
+    new_summary = f"Status: {new_status} | IN: {new_in} | OUT: {new_out}"
+
+    # Only write log if something meaningful changed, or if it's a forced override
+    if old_summary != new_summary or True:
+        await write_audit_log(
+            db,
+            record_id=existing_record.id,
+            emp_id=existing_record.emp_id,
+            action="UPDATE",
+            field_name="attendance_details",
+            old_value=old_summary,
+            new_value=new_summary,
+            changed_by=user_id,
+            changed_by_name=user_name,
+            note=existing_record.override_note
+        )
     
     return existing_record

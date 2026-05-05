@@ -33,6 +33,8 @@ class AttendanceDaily(Base):
     is_half_late_mark = Column(Boolean, default=False)
     is_half_day = Column(Boolean, default=False)
     total_working_hours = Column(Float, default=0.0)
+    ot_hours = Column(Float, default=0.0)
+    ot_status = Column(String(20), default="NONE")  # NONE, PENDING, APPROVED, REJECTED
     is_incomplete = Column(Boolean, default=False)
     is_overridden = Column(Boolean, default=False)
     override_by = Column(String(36), ForeignKey("users.id"), nullable=True)

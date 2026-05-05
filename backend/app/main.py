@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from slowapi.errors import RateLimitExceeded
@@ -22,9 +22,11 @@ from app.routers import (
     scheduler_router, insights_router,
     statutory_rates_router, company_router,
 )
+from app.routers.license import router as license_router
 from app.models.user import User, UserRole
 from app.utils.security import hash_password
 from app.database import AsyncSessionLocal
+from app.license_check import is_license_valid
 
 
 @asynccontextmanager
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     await create_default_admin()
     # Seed default attendance policy if not exists
+    from app.services.policy_service import seed_default_policy
     async with AsyncSessionLocal() as db:
         await seed_default_policy(db)
     
@@ -82,6 +85,35 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# ── LICENSE MIDDLEWARE ──
+# WHY: This middleware acts as a security gatekeeper for the entire application.
+# WHERE: It intercepts every HTTP request made to the API (except public/exempt paths).
+# WHAT: It calls is_license_valid() to verify the machine ID and expiry date. 
+# If invalid, it blocks the request with a 402 (Payment Required) status code, 
+# forcing the user to activate or renew the license.
+@app.middleware("http")
+async def license_check_middleware(request: Request, call_next):
+    # खालील पाथला लायसन्स चेक मधून सूट (Exempt) द्या
+    exempt_paths = ["/api/v1/license/", "/docs", "/openapi.json", "/redoc", "/api/debug/"]
+    
+    is_exempt = any(request.url.path.startswith(p) for p in exempt_paths) or request.url.path == "/"
+    
+    if not is_exempt:
+        valid, reason = is_license_valid()
+        if not valid:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=402, # Payment Required
+                content={
+                    "detail": "LICENSE_REQUIRED",
+                    "reason": reason,
+                    "message": "Software License Not Found or Expired. Please activate to continue."
+                }
+            )
+    
+    response = await call_next(request)
+    return response
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
@@ -97,12 +129,9 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(employees_router, prefix="/api/employees")
-# attendance_hr_router MUST be registered BEFORE attendance_router
-# so that /api/attendance/manual, /api/attendance/daily/*, etc. are matched first
 app.include_router(attendance_hr_router, prefix="/api/attendance")
 app.include_router(attendance_router, prefix="/api/attendance")
 app.include_router(leaves_router, prefix="/api/leaves")
-# app.include_router(payroll_router, prefix="/api/payroll") # Disabled old Payroll API as per user request
 app.include_router(holidays_router, prefix="/api/holidays")
 app.include_router(dashboard_router, prefix="/api/dashboard")
 app.include_router(audit_router, prefix="/api/audit")
@@ -127,6 +156,7 @@ app.include_router(scheduler_router, prefix="/api/v1/scheduler")
 app.include_router(insights_router, prefix="/api/v1/insights")
 app.include_router(statutory_rates_router, prefix="/api/v1/statutory-rates")
 app.include_router(company_router, prefix="/api/v1/company")
+app.include_router(license_router, prefix="/api/v1/license")
 
 
 @app.get("/")
@@ -145,38 +175,16 @@ async def health_check():
 
 @app.get("/api/status")
 async def server_status():
-    """Heartbeat endpoint — SRS GET /v1/status"""
+    """Heartbeat endpoint"""
     try:
-        from app.database import AsyncSessionLocal
-        from app.models.user import User
-        from app.models.employee import Employee
         from sqlalchemy import select
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(User))
-            users = [{"id": u.id, "username": u.username, "emp_id": u.emp_id, "role": u.role.value} for u in result.scalars().all()]
-            
-            emp_result = await db.execute(select(Employee))
-            employees = [{"id": e.id, "emp_code": e.emp_code, "email": getattr(e, 'email', None), "name": getattr(e, 'name', getattr(e, 'first_name', ''))} for e in emp_result.scalars().all()]
-            
-            from app.models.salary_calculation import SalaryCalculation
-            sc_result = await db.execute(select(SalaryCalculation))
-            salary_calculations = [{"id": sc.id, "employee_id": sc.employee_id, "status": sc.status.value if hasattr(sc.status, 'value') else sc.status} for sc in sc_result.scalars().all()]
-            
-            from app.models.attendance import Attendance
-            att_result = await db.execute(select(Attendance).order_by(Attendance.created_at.desc()).limit(20))
-            attendance_records = [{"id": a.id, "emp_id": a.emp_id, "date": str(a.date), "time": str(a.time), "type": a.attendance_type.value if hasattr(a.attendance_type, 'value') else a.attendance_type} for a in att_result.scalars().all()]
-            
-            return {
-                "status": "online",
-                "users": users,
-                "employees": employees,
-                "salary_calculations": salary_calculations,
-                "attendance_records": attendance_records
-            }
+            users = [{"id": u.id, "username": u.username, "role": u.role.value} for u in result.scalars().all()]
+            return {"status": "online", "users": users}
     except Exception as e:
         return {"error": str(e)}
 
-from fastapi import Request
 @app.post("/api/debug/log")
 async def debug_log(request: Request):
     data = await request.json()
@@ -187,14 +195,6 @@ async def debug_log(request: Request):
     return {"status": "logged"}
 
 from app.utils.deps import get_current_user
-from fastapi import Depends
-from app.models.user import User
-
 @app.get("/api/debug/user")
 async def debug_user(current_user: User = Depends(get_current_user)):
-    return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "emp_id": current_user.emp_id,
-        "role": current_user.role.value
-    }
+    return {"id": current_user.id, "username": current_user.username}

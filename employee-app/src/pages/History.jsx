@@ -1,80 +1,68 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, MapPin, RefreshCw, Loader2 } from 'lucide-react'
-import { attendanceDB } from '../db'
-import { checkAndSync, getLastSyncMeta } from '../services/syncService'
+import { Calendar, Clock, MapPin, Loader2 } from 'lucide-react'
 import { attendanceApi } from '../services/api'
 
 export default function History() {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
-  const [lastSyncMeta, setLastSyncMeta] = useState(null)
-  const [syncFilter, setSyncFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [activeTab, setActiveTab] = useState('HISTORY') // 'HISTORY' | 'REQUESTS'
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [requests, setRequests] = useState([])
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    check_in: '09:30',
+    check_out: '18:30',
+    reason: ''
+  })
 
   useEffect(() => {
     loadRecords()
-    setLastSyncMeta(getLastSyncMeta())
+    loadRequests()
   }, [])
+
+  async function loadRequests() {
+    try {
+      const res = await attendanceApi.listMissedPunches()
+      setRequests(res.data || [])
+    } catch (e) { console.log(e) }
+  }
+
+  async function handleSubmitRequest(e) {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      await attendanceApi.submitMissedPunch(form)
+      alert('Request submitted successfully!')
+      setShowRequestModal(false)
+      loadRequests()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to submit request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   async function loadRecords() {
     setLoading(true)
     try {
-      // Fetch from live API instead of local DB
       const res = await attendanceApi.getMy({ limit: 100 })
-      
-      // Remote log the response
-      fetch('/api/debug/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'History_getMy', data: res.data })
-      }).catch(() => {})
-
       const allRecords = res.data.records || res.data || []
-      
       const sorted = allRecords.sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
       )
       setRecords(sorted)
     } catch (error) {
       console.error('Error loading records:', error)
-      fetch('/api/debug/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'History_Error', msg: String(error), stack: error.stack })
-      }).catch(() => {})
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleSync() {
-    if (!navigator.onLine) {
-      alert('You are offline. Please connect to internet to sync.')
-      return
-    }
-
-    setSyncing(true)
-    try {
-      const result = await checkAndSync()
-      if (result) {
-        alert(`Synced: ${result.synced}, Failed: ${result.failed}`)
-        await loadRecords()
-        setLastSyncMeta(getLastSyncMeta())
-      }
-    } catch (error) {
-      alert('Sync failed. Please try again.')
-      setLastSyncMeta(getLastSyncMeta())
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  const pendingCount = records.filter(r => r.sync_status === 'PENDING').length
   const filteredRecords = records.filter((record) => {
-    if (syncFilter !== 'ALL' && record.sync_status !== syncFilter) return false
     if (typeFilter !== 'ALL' && record.attendance_type !== typeFilter) return false
     if (startDate && record.date < startDate) return false
     if (endDate && record.date > endDate) return false
@@ -94,133 +82,94 @@ export default function History() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-semibold text-gray-800">Attendance History</h2>
-          <p className="text-sm text-gray-500">{filteredRecords.length} of {records.length} records</p>
+          <p className="text-sm text-gray-500">{activeTab === 'HISTORY' ? `${filteredRecords.length} records` : `${requests.length} requests`}</p>
         </div>
-        
+        {activeTab !== 'HISTORY' && (
+          <button
+            onClick={() => setShowRequestModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-bold shadow-lg"
+          >
+            + New Request
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
         <button
-          onClick={handleSync}
-          disabled={syncing || pendingCount === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg text-sm disabled:opacity-50"
+          onClick={() => setActiveTab('HISTORY')}
+          className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'HISTORY' ? 'bg-white shadow text-primary-600' : 'text-gray-500'}`}
         >
-          {syncing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
-          Sync ({pendingCount})
+          History
+        </button>
+        <button
+          onClick={() => setActiveTab('REQUESTS')}
+          className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'REQUESTS' ? 'bg-white shadow text-primary-600' : 'text-gray-500'}`}
+        >
+          Requests
         </button>
       </div>
 
-      {lastSyncMeta && (
-        <div className={`mb-4 rounded-lg px-3 py-2 text-sm ${
-          lastSyncMeta.status === 'success' ? 'bg-green-100 text-green-700' :
-          lastSyncMeta.status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-          lastSyncMeta.status === 'failed' ? 'bg-red-100 text-red-700' :
-          'bg-gray-100 text-gray-600'
-        }`}>
-          Last sync: {lastSyncMeta.message}
-          {` | synced ${lastSyncMeta.synced}, failed ${lastSyncMeta.failed}, retries ${lastSyncMeta.retries}`}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">Sync Status</label>
-          <select
-            value={syncFilter}
-            onChange={(e) => setSyncFilter(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          >
-            <option value="ALL">All</option>
-            <option value="SYNCED">Synced</option>
-            <option value="PENDING">Pending</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">Attendance Type</label>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          >
-            <option value="ALL">All</option>
-            <option value="CHECK_IN">Check-In</option>
-            <option value="CHECK_OUT">Check-Out</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">Start Date</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">End Date</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
-        </div>
-      </div>
-
-      {filteredRecords.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>No matching attendance records</p>
+      {activeTab === 'HISTORY' ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 mb-4">
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="border rounded-lg p-2 text-sm">
+              <option value="ALL">All Types</option>
+              <option value="CHECK_IN">Check-In</option>
+              <option value="CHECK_OUT">Check-Out</option>
+            </select>
+          </div>
+          {filteredRecords.map((record) => (
+            <div key={record.id} className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-primary-500">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-bold text-gray-800">{record.attendance_type}</p>
+                  <p className="text-xs text-gray-500">{record.date} • {record.time}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredRecords.map((record) => (
-            <div
-              key={record.id}
-              className="bg-white rounded-lg shadow p-4 border-l-4"
-              style={{
-                borderLeftColor: record.sync_status === 'SYNCED' ? '#22c55e' : '#f59e0b'
-              }}
-            >
-              <div className="flex items-start justify-between">
+          {requests.map((req) => (
+            <div key={req.id} className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
+              <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="font-medium text-gray-800">
-                    {record.emp_name || 'Unknown'}
-                  </p>
-                  <p className="text-sm text-gray-500">{record.emp_code} • {record.attendance_type || 'CHECK_IN'}</p>
+                  <p className="font-bold text-gray-800">{req.date}</p>
+                  <p className="text-xs text-gray-500">{req.reason}</p>
                 </div>
-                <div className={`px-2 py-1 rounded text-xs font-medium ${
-                  record.sync_status === 'SYNCED' 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {record.sync_status}
-                </div>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {req.status}
+                </span>
               </div>
-              
-              <div className="mt-3 flex items-center gap-4 text-sm text-gray-500">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  <span>{record.date}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  <span>{record.time}</span>
-                </div>
+              <div className="flex gap-4 mt-2 pt-2 border-t border-dashed">
+                <div className="text-xs font-bold text-gray-600">In: {req.requested_check_in}</div>
+                <div className="text-xs font-bold text-gray-600">Out: {req.requested_check_out}</div>
               </div>
-              
-              {record.latitude && record.longitude && (
-                <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
-                  <MapPin className="w-3 h-3" />
-                  <span>{record.latitude.toFixed(4)}, {record.longitude.toFixed(4)}</span>
-                </div>
-              )}
             </div>
           ))}
+        </div>
+      )}
+
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-gray-800">Missed Punch</h3>
+              <button onClick={() => setShowRequestModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSubmitRequest} className="space-y-4">
+              <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full bg-gray-50 rounded-xl p-3" />
+              <div className="grid grid-cols-2 gap-4">
+                <input type="time" value={form.check_in} onChange={e => setForm({...form, check_in: e.target.value})} className="w-full bg-gray-50 rounded-xl p-3" />
+                <input type="time" value={form.check_out} onChange={e => setForm({...form, check_out: e.target.value})} className="w-full bg-gray-50 rounded-xl p-3" />
+              </div>
+              <textarea placeholder="Reason" value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} className="w-full bg-gray-50 rounded-xl p-3" rows="3" />
+              <button type="submit" disabled={submitting} className="w-full bg-primary-600 text-white font-bold py-3 rounded-xl">
+                {submitting ? 'Submitting...' : 'Submit Request'}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

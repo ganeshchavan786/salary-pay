@@ -136,6 +136,18 @@ function LateComingTab({ filters }) {
   )
 }
 
+function formatReportTime(v) {
+  if (!v) return '—'
+  if (typeof v === 'string' && v.includes('T')) {
+    const timePart = v.split('T')[1].replace('Z', '')
+    const [h, m] = timePart.split(':')
+    const d = new Date()
+    d.setHours(parseInt(h, 10), parseInt(m, 10), 0)
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  }
+  return new Date(v).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
 // Early Leaving
 function EarlyLeavingTab({ filters }) {
   const params = buildParams(filters)
@@ -145,7 +157,7 @@ function EarlyLeavingTab({ filters }) {
     { key: 'name', label: 'Name' },
     { key: 'department', label: 'Department' },
     { key: 'date', label: 'Date' },
-    { key: 'check_out', label: 'Check Out', render: v => v ? new Date(v).toLocaleTimeString() : '—' },
+    { key: 'check_out', label: 'Check Out', render: formatReportTime },
     { key: 'scheduled_end_time', label: 'Scheduled End' },
     { key: 'minutes_left_early', label: 'Mins Early' },
   ]

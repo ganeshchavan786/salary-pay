@@ -117,6 +117,18 @@ function FrequentLateTab({ filters }) {
   )
 }
 
+function formatReportTime(v) {
+  if (!v) return '—'
+  if (typeof v === 'string' && v.includes('T')) {
+    const timePart = v.split('T')[1].replace('Z', '')
+    const [h, m] = timePart.split(':')
+    const d = new Date()
+    d.setHours(parseInt(h, 10), parseInt(m, 10), 0)
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  }
+  return new Date(v).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
 function MissedPunchTab({ filters }) {
   const params = buildParams(filters)
   const { data, loading } = useReportData(reportApi.missedPunch, params)
@@ -125,8 +137,8 @@ function MissedPunchTab({ filters }) {
     { key: 'name', label: 'Name' },
     { key: 'department', label: 'Department' },
     { key: 'date', label: 'Date' },
-    { key: 'check_in', label: 'Check In', render: v => v ? new Date(v).toLocaleTimeString() : '—' },
-    { key: 'check_out', label: 'Check Out', render: v => v ? new Date(v).toLocaleTimeString() : '—' },
+    { key: 'check_in', label: 'Check In', render: formatReportTime },
+    { key: 'check_out', label: 'Check Out', render: formatReportTime },
     { key: 'missing_punch', label: 'Missing' },
     { key: 'source', label: 'Source' },
     { key: 'request_status', label: 'Request Status' },

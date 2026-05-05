@@ -60,6 +60,15 @@ api.interceptors.response.use(
       })
     }
 
+    // WHY: This is the "Security Guard" of the frontend.
+    // WHERE: It intercepts every single API response from the backend.
+    // WHAT: If the backend sends a 402 (Payment Required) status, it means the license is invalid.
+    // The interceptor immediately redirects the user to the Landing Page activation screen.
+    if (error.response?.status === 402) {
+      window.location.href = '/?license_required=1'
+      return Promise.reject(error)
+    }
+
     // Only handle 401 errors
     if (error.response?.status !== 401) {
       return Promise.reject(error)
@@ -231,6 +240,13 @@ export const attendanceHrApi = {
   workingDays: (month, year) => api.get('/attendance/working-days', { params: { month, year } }),
   export: (params) => api.get('/attendance/export', { params, responseType: 'blob' }),
   stats: (month, year) => api.get('/attendance/stats', { params: { month, year } }),
+  listMissedPunches: (params) => api.get('/attendance/missed-punch', { params }),
+  approveMissedPunch: (id) => api.put(`/attendance/missed-punch/${id}/approve`),
+  rejectMissedPunch: (id, data) => api.put(`/attendance/missed-punch/${id}/reject`, data),
+  approveOt: (id) => api.put(`/attendance/daily/${id}/ot-approve`),
+  rejectOt: (id) => api.put(`/attendance/daily/${id}/ot-reject`),
+  bulkApproveOt: (empId, month, year) => api.put('/attendance/ot-bulk-approve', null, { params: { emp_id: empId, month, year } }),
+  bulkRejectOt: (empId, month, year) => api.put('/attendance/ot-bulk-reject', null, { params: { emp_id: empId, month, year } }),
 }
 
 export const settingsApi = {

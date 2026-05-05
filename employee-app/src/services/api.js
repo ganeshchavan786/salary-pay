@@ -122,7 +122,9 @@ export const attendanceApi = {
   sync: (deviceId, records) => api.post('/attendance/sync', { device_id: deviceId, records }),
   getAll: (params) => api.get('/attendance', { params }),
   getMy: (params) => api.get('/attendance/my', { params }),
-  getSummary: (params) => api.get('/attendance/summary', { params })
+  getSummary: (params) => api.get('/attendance/summary', { params }),
+  listMissedPunches: () => api.get('/attendance/missed-punch'),
+  submitMissedPunch: (data) => api.post('/attendance/missed-punch', data)
 }
 
 export const authApi = {

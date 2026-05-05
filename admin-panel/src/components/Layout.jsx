@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   Banknote,
+  ExternalLink,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -57,6 +58,22 @@ export default function Layout({ children }) {
   // Auto-expand salary section when on any /salary/* page
   const isSalaryActive = location.pathname.startsWith('/salary')
   const [salaryOpen, setSalaryOpen] = useState(isSalaryActive)
+
+  // ── License Check ──
+  const [license, setLicense] = useState(null)
+  
+  useEffect(() => {
+    const fetchLicense = async () => {
+      try {
+        const res = await fetch('http://localhost:8551/api/v1/license/info')
+        const data = await res.json()
+        if (data.active) setLicense(data)
+      } catch (err) {
+        console.error("License fetch failed")
+      }
+    }
+    fetchLicense()
+  }, [])
 
   // Keep in sync when navigating
   useEffect(() => {
@@ -212,6 +229,34 @@ export default function Layout({ children }) {
             <Settings className={`w-4 h-4 flex-shrink-0 ${location.pathname === '/settings' ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
             <span className="text-sm">Settings</span>
           </Link>
+          
+          {/* ── License Status Card ── */}
+          {/* WHY: This card keeps the Administrator informed about the software's validity status. */}
+          {/* WHERE: Visible at the bottom of the sidebar across all admin pages. */}
+          {/* WHAT: It displays the current plan (Trial/Gold) and a countdown of remaining days. 
+              The "Renew" button opens the License Server's checkout page for online payment. */}
+          {license && (
+            <div className="mx-1 mt-2 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+              <div className="flex items-center gap-2 mb-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">License Status</span>
+              </div>
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-xs font-bold text-gray-800 capitalize">{license.plan} Plan</p>
+                  <p className={`text-[10px] font-semibold ${license.days_remaining <= 2 ? 'text-red-500' : 'text-indigo-600'}`}>
+                    {license.days_remaining} Days Remaining
+                  </p>
+                </div>
+                <button 
+                  onClick={() => window.open(`http://localhost:8661/checkout?key=${license.license_key}`, '_blank')}
+                  className="text-[10px] bg-white border border-indigo-200 text-indigo-600 px-2 py-0.5 rounded-md font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1"
+                >
+                  <ExternalLink size={10} /> Renew
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* User card */}
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-50 mt-1">

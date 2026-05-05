@@ -26,7 +26,7 @@ from app.schemas.attendance import (
 from app.utils.deps import get_current_user, require_supervisor
 from app.utils.conflict_handler import ConflictMode, detect_conflict, write_audit_log, apply_overwrite
 from app.services.payroll_service import calculate_late_mark_type, calculate_working_days, is_second_or_fourth_saturday
-from app.services import attendance_service
+from app.services import attendance_service, policy_service
 from app.services.payroll_recalculation_service import recalculate_payroll_record
 from app.utils.period_lock_validator import check_date_in_locked_period, raise_locked_period_error
 
@@ -37,10 +37,13 @@ logger = logging.getLogger(__name__)
 async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]] = None):
     """
     Background task: sync all raw attendance punches → attendance_daily table.
-    Calculates cumulative working hours for multi-punch (breaks).
+    Calculates cumulative working hours for multi-punch (breaks) and tracks overtime.
     """
     async with AsyncSessionLocal() as db:
         try:
+            # Fetch global policy for OT calculation
+            policy = await policy_service.get_policy(db)
+            
             # Fetch ALL records for the day, ordered by time
             query = select(Attendance).where(Attendance.date == target_date).order_by(Attendance.emp_id, Attendance.time)
             if emp_ids:
@@ -71,9 +74,10 @@ async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]]
                 )
                 existing = existing_result.scalar_one_or_none()
 
-                if existing and existing.is_overridden:
-                    skipped += 1
-                    continue
+                # We no longer skip overridden records entirely, so we can auto-fill blank times
+                # if existing and existing.is_overridden:
+                #     skipped += 1
+                #     continue
 
                 total_seconds = 0.0
                 first_in = None
@@ -98,6 +102,14 @@ async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]]
 
                 total_hours = round(total_seconds / 3600, 2)
                 
+                # Calculate OT Hours
+                ot_hours = 0.0
+                ot_status = "NONE"
+                if policy and policy.ot_enabled and policy.shift_hours:
+                    if total_hours > float(policy.shift_hours):
+                        ot_hours = round(total_hours - float(policy.shift_hours), 2)
+                        ot_status = "PENDING"
+                
                 # Late mark based on first check-in
                 late_mark = LateMarkType.NONE
                 if first_in:
@@ -109,15 +121,74 @@ async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]]
                 status = AttendanceStatus.HALFDAY if is_half_day else AttendanceStatus.PRESENT
 
                 if existing:
-                    existing.check_in = first_in
-                    existing.check_out = last_out
-                    existing.total_working_hours = total_hours
-                    existing.status = status
-                    existing.late_mark_type = late_mark
-                    existing.is_late_mark = is_late
-                    existing.is_half_late_mark = is_half_late
-                    existing.is_half_day = is_half_day
-                    existing.updated_at = datetime.utcnow()
+                    if existing.is_overridden:
+                        # Machine punches ALWAYS overwrite the times, even if overridden by Admin
+                        # Capture old times BEFORE overwriting
+                        old_in = existing.check_in.strftime("%H:%M") if existing.check_in else "None"
+                        old_out = existing.check_out.strftime("%H:%M") if existing.check_out else "None"
+                        old_status = existing.status.value if existing.status else "None"
+                        
+                        updated_times = False
+                        if first_in:
+                            existing.check_in = first_in
+                            updated_times = True
+                        if last_out:
+                            existing.check_out = last_out
+                            updated_times = True
+                        
+                        if updated_times:
+                            # Use cumulative working hours (breaks deducted) instead of simple diff
+                            existing.total_working_hours = total_hours
+                            if policy and policy.ot_enabled and policy.shift_hours:
+                                if total_hours > float(policy.shift_hours):
+                                    existing.ot_hours = round(total_hours - float(policy.shift_hours), 2)
+                                    existing.ot_status = "PENDING"
+                            existing.updated_at = datetime.utcnow()
+                            
+                            # Write audit log ONLY if times actually changed
+                            # Use try/except because background sync has no real user context
+                            try:
+                                new_in = existing.check_in.strftime("%H:%M") if existing.check_in else "None"
+                                new_out = existing.check_out.strftime("%H:%M") if existing.check_out else "None"
+                                old_summary = f"Status: {old_status} | IN: {old_in} | OUT: {old_out}"
+                                new_summary = f"Status: {old_status} | IN: {new_in} | OUT: {new_out}"
+                                
+                                # Only log if something actually changed
+                                if old_summary != new_summary:
+                                    from app.models.audit_log import AuditLog
+                                    audit = AuditLog(
+                                        id=str(uuid.uuid4()),
+                                        table_name="attendance_daily",
+                                        record_id=existing.id,
+                                        emp_id=emp_id,
+                                        action="UPDATE",
+                                        field_name="attendance_details",
+                                        old_value=old_summary,
+                                        new_value=new_summary,
+                                        changed_by=emp_id,
+                                        changed_by_name="⚡ Machine Sync",
+                                        note="Auto-updated from App/Face punch",
+                                    )
+                                    db.add(audit)
+                                    logger.info(f"[sync_to_daily] Audit: {old_summary} → {new_summary}")
+                            except Exception as audit_err:
+                                logger.warning(f"[sync_to_daily] Audit log failed for {emp_id}/{target_date}: {audit_err}")
+                            synced += 1
+                        else:
+                            skipped += 1
+                    else:
+                        existing.check_in = first_in
+                        existing.check_out = last_out
+                        existing.total_working_hours = total_hours
+                        existing.ot_hours = ot_hours
+                        existing.ot_status = ot_status
+                        existing.status = status
+                        existing.late_mark_type = late_mark
+                        existing.is_late_mark = is_late
+                        existing.is_half_late_mark = is_half_late
+                        existing.is_half_day = is_half_day
+                        existing.updated_at = datetime.utcnow()
+                        synced += 1
                 else:
                     db.add(AttendanceDaily(
                         id=str(uuid.uuid4()),
@@ -126,6 +197,8 @@ async def sync_to_daily_for_date(target_date: date, emp_ids: Optional[List[str]]
                         check_in=first_in,
                         check_out=last_out,
                         total_working_hours=total_hours,
+                        ot_hours=ot_hours,
+                        ot_status=ot_status,
                         status=status,
                         late_mark_type=late_mark,
                         is_late_mark=is_late,
@@ -157,12 +230,17 @@ async def sync_attendance(
     
     for record in sync_data.records:
         try:
+            logger.info(f"[SYNC] Processing: emp_id={record.emp_id}, date={record.date}, "
+                        f"type={record.attendance_type.value}, time={record.time}, "
+                        f"local_id={record.local_id}, lat={record.latitude}, lng={record.longitude}")
+            
             emp_result = await db.execute(
                 select(Employee).where(Employee.id == record.emp_id)
             )
             employee = emp_result.scalar_one_or_none()
             
             if not employee:
+                logger.warning(f"[SYNC] REJECTED - Employee not found: {record.emp_id}")
                 results.append(SyncResult(
                     local_id=record.local_id,
                     status="failed",
@@ -171,25 +249,36 @@ async def sync_attendance(
                 failed += 1
                 continue
             
-            # Check for duplicate - same employee, same date, same type
+            logger.info(f"[SYNC] Employee found: {employee.name} ({employee.emp_code})")
+            
+            # Only skip exact duplicates (same emp + same date + same type + same time)
+            # This prevents re-syncing the exact same punch, but allows multiple punches per day
             existing = await db.execute(
                 select(Attendance).where(
                     and_(
                         Attendance.emp_id == record.emp_id,
                         Attendance.date == record.date,
-                        Attendance.attendance_type == record.attendance_type.value
+                        Attendance.attendance_type == record.attendance_type.value,
+                        Attendance.time == record.time
                     )
                 )
             )
-            if existing.scalar_one_or_none():
+            existing_record = existing.scalar_one_or_none()
+            if existing_record:
+                # Exact same punch already exists — skip (not a new punch)
+                logger.info(f"[SYNC] SKIP exact duplicate: {record.attendance_type.value} "
+                           f"for {employee.name} on {record.date} at {record.time}")
                 results.append(SyncResult(
                     local_id=record.local_id,
-                    status="duplicate",
-                    error=f"{record.attendance_type.value} already exists for this date"
+                    server_id=existing_record.id,
+                    status="synced"
                 ))
                 duplicates += 1
                 continue
             
+            # Auto-detect source: GPS present = Mobile APP, no GPS = Face Kiosk
+            source = "APP" if (record.latitude and record.longitude) else "FACE"
+
             attendance = Attendance(
                 local_id=record.local_id,
                 emp_id=record.emp_id,
@@ -200,12 +289,16 @@ async def sync_attendance(
                 longitude=record.longitude,
                 device_id=sync_data.device_id,
                 photo=record.photo,
+                source=source,
                 sync_status=SyncStatus.SYNCED,
                 synced_at=datetime.utcnow()
             )
             
             db.add(attendance)
             await db.flush()
+            
+            logger.info(f"[SYNC] ✅ SAVED: {record.attendance_type.value} for {employee.name} "
+                        f"on {record.date} at {record.time}, source={source}, id={attendance.id}")
             
             results.append(SyncResult(
                 local_id=record.local_id,
@@ -215,6 +308,8 @@ async def sync_attendance(
             synced += 1
             
         except Exception as e:
+            logger.error(f"[SYNC] ❌ FAILED: emp_id={record.emp_id}, date={record.date}, "
+                         f"type={record.attendance_type.value}, error={str(e)}")
             results.append(SyncResult(
                 local_id=record.local_id,
                 status="failed",
@@ -388,6 +483,7 @@ async def get_my_attendance(
             "longitude": att.longitude,
             "device_id": att.device_id,
             "photo": att.photo,
+            "source": getattr(att, "source", "APP"),
             "created_at": att.created_at.isoformat()
         })
     
@@ -555,14 +651,19 @@ async def bulk_save_attendance(
                     db.add(new_record)
                     await db.flush()  # get the id assigned
 
+                    new_in = check_in_dt.strftime("%H:%M") if check_in_dt else "None"
+                    new_out = check_out_dt.strftime("%H:%M") if check_out_dt else "None"
+                    new_status_val = record.status.value if hasattr(record.status, "value") else str(record.status)
+                    new_summary = f"Status: {new_status_val} | IN: {new_in} | OUT: {new_out}"
+
                     await write_audit_log(
                         db,
                         record_id=new_record.id,
                         emp_id=data.emp_id,
                         action="INSERT",
-                        field_name="status",
+                        field_name="attendance_details",
                         old_value=None,
-                        new_value=record.status.value if hasattr(record.status, "value") else str(record.status),
+                        new_value=new_summary,
                         changed_by=current_user.id,
                         changed_by_name=getattr(current_user, "full_name", None)
                             or getattr(current_user, "username", str(current_user.id)),

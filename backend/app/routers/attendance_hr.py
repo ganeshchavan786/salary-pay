@@ -139,15 +139,19 @@ async def manual_attendance_entry(
     db.add(record)
     await db.flush()
 
+    new_in = check_in_dt.strftime("%H:%M") if check_in_dt else "None"
+    new_out = check_out_dt.strftime("%H:%M") if check_out_dt else "None"
+    new_summary = f"Status: {data.status.value} | IN: {new_in} | OUT: {new_out}"
+
     changer_name = getattr(current_user, "username", None) or str(current_user.id)
     await write_audit_log(
         db,
         record_id=record.id,
         emp_id=data.emp_id,
         action="INSERT",
-        field_name="status",
+        field_name="attendance_details",
         old_value=None,
-        new_value=data.status.value,
+        new_value=new_summary,
         changed_by=current_user.id,
         changed_by_name=changer_name,
         note=data.override_note or "Manual HR Entry",
@@ -318,6 +322,8 @@ def _att_to_dict(a: AttendanceDaily) -> dict:
         "is_half_late_mark": a.is_half_late_mark or False,
         "is_half_day": a.is_half_day or False,
         "total_working_hours": getattr(a, 'total_working_hours', 0.0),
+        "ot_hours": getattr(a, 'ot_hours', 0.0),
+        "ot_status": getattr(a, 'ot_status', 'NONE'),
         "is_incomplete": getattr(a, 'is_incomplete', False),
         "is_overridden": a.is_overridden or False,
         "override_note": a.override_note,
@@ -335,6 +341,93 @@ def _audit_to_dict(l: AuditLog) -> dict:
         "note": l.note,
         "created_at": l.created_at.isoformat() if l.created_at else None,
     }
+
+
+# ─── OT Approval ────────────────────────────────────────────────────────────
+
+@router.put("/daily/{id}/ot-approve")
+async def approve_ot(
+    id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_supervisor),
+):
+    result = await db.execute(select(AttendanceDaily).where(AttendanceDaily.id == id))
+    att = result.scalar_one_or_none()
+    if not att:
+        raise HTTPException(status_code=404, detail="Record not found")
+    att.ot_status = "APPROVED"
+    await db.commit()
+    return {"message": "OT Approved", "ot_status": "APPROVED"}
+
+@router.put("/daily/{id}/ot-reject")
+async def reject_ot(
+    id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_supervisor),
+):
+    result = await db.execute(select(AttendanceDaily).where(AttendanceDaily.id == id))
+    att = result.scalar_one_or_none()
+    if not att:
+        raise HTTPException(status_code=404, detail="Record not found")
+    att.ot_status = "REJECTED"
+    await db.commit()
+    return {"message": "OT Rejected", "ot_status": "REJECTED"}
+
+
+@router.put("/ot-bulk-approve")
+async def bulk_approve_ot(
+    emp_id: str = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    year: int = Query(..., ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_supervisor),
+):
+    """Approve all PENDING OT records for an employee in a given month."""
+    result = await db.execute(
+        select(AttendanceDaily).where(
+            and_(
+                AttendanceDaily.emp_id == emp_id,
+                AttendanceDaily.ot_hours > 0,
+                AttendanceDaily.ot_status == "PENDING",
+                func.strftime("%m", AttendanceDaily.date) == f"{month:02d}",
+                func.strftime("%Y", AttendanceDaily.date) == str(year),
+            )
+        )
+    )
+    records = result.scalars().all()
+    count = len(records)
+    for r in records:
+        r.ot_status = "APPROVED"
+    await db.commit()
+    return {"message": f"{count} OT records approved", "approved_count": count}
+
+
+@router.put("/ot-bulk-reject")
+async def bulk_reject_ot(
+    emp_id: str = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    year: int = Query(..., ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_supervisor),
+):
+    """Reject all PENDING OT records for an employee in a given month."""
+    result = await db.execute(
+        select(AttendanceDaily).where(
+            and_(
+                AttendanceDaily.emp_id == emp_id,
+                AttendanceDaily.ot_hours > 0,
+                AttendanceDaily.ot_status == "PENDING",
+                func.strftime("%m", AttendanceDaily.date) == f"{month:02d}",
+                func.strftime("%Y", AttendanceDaily.date) == str(year),
+            )
+        )
+    )
+    records = result.scalars().all()
+    count = len(records)
+    for r in records:
+        r.ot_status = "REJECTED"
+    await db.commit()
+    return {"message": f"{count} OT records rejected", "rejected_count": count}
 
 
 # ─── Missed Punch Regularization ────────────────────────────────────────────
