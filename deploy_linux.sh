@@ -1,4 +1,4 @@
-#!/map/bash
+#!/bin/bash
 # ========================================================
 # HRMS Linux Auto-Deployment Script
 # Optimized for Ubuntu 22.04+
