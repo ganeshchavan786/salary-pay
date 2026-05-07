@@ -363,6 +363,11 @@
                 if (regRes.ok) {
                     const licenseKey = regData.license_key;
                     
+                    // ३. customer_id सेव्ह करा (चेकआउटसाठी लागेल)
+                    if (regData.customer_id) {
+                        localStorage.setItem('sp_customer_id', regData.customer_id);
+                    }
+                    
                     // २. तुमच्या HRMS बॅकएंडला ती की पाठवा (ऑटो-सेव्ह)
                     const actRes = await fetch(`${API_URL}/license/activate`, {
                         method: 'POST',
