@@ -284,7 +284,7 @@ export default function Layout({ children }) {
                 </div>
                 {!isReadOnly && (
                   <button 
-                    onClick={() => window.open(`https://license.vrushaliinfotech.com/checkout?key=${license.license_key_masked}`, '_blank')}
+                    onClick={() => window.open(`https://license.vrushaliinfotech.com/checkout?customer_id=${license.customer_id}&plan=${license.plan}`, '_blank')}
                     className="text-[10px] bg-white border border-indigo-200 text-indigo-600 px-2 py-0.5 rounded-md font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1"
                   >
                     <ExternalLink size={10} /> Renew

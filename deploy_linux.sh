@@ -92,10 +92,20 @@ server {
     # API Proxy to FastAPI
     location /api/ {
         proxy_pass http://127.0.0.1:8401;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # License Server Proxy (CORS fix for Landing Page)
+    location /license-srv/ {
+        proxy_pass https://license.vrushaliinfotech.com/api/;
+        proxy_set_header Host license.vrushaliinfotech.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
     }
 }
 EOF

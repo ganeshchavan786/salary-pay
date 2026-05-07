@@ -69,6 +69,7 @@ async def get_license_info():
 
     # 3. Try to get details from cache
     plan = "unknown"
+    customer_id = None
     days_remaining = 0
     mode = "offline" if status == STATE_NORMAL and "Offline" in reason else "online"
     
@@ -78,6 +79,7 @@ async def get_license_info():
                 with open(path, 'r') as f:
                     cache = json.load(f)
                     plan = cache.get("plan", plan)
+                    customer_id = cache.get("customer_id")
                     # Simple calculation for days remaining if valid_till exists
                     if cache.get("valid_till"):
                         vt = datetime.fromisoformat(cache["valid_till"].replace("Z", "+00:00"))
@@ -90,6 +92,7 @@ async def get_license_info():
         "status": status,
         "reason": reason,
         "plan": plan,
+        "customer_id": customer_id,
         "days_remaining": days_remaining,
         "mode": mode,
         "machine_id": get_machine_id(),

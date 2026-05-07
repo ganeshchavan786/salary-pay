@@ -93,6 +93,7 @@ def save_license_cache(result, license_key):
     """Saves encrypted cache provided by server to 2 locations"""
     cache_data = {
         "license_key": license_key,
+        "customer_id": result.get("customer_id"),
         "plan": result.get("plan"),
         "features": result.get("features", []),
         "valid_till": result.get("valid_till"),
