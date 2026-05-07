@@ -268,21 +268,32 @@
     </div>
 
     <script>
-        const API_URL = "http://localhost:8551/api/v1"; // HRMS Backend
-        const LICENSE_SERVER = "http://localhost:8661"; // License Server
+        // Use relative path for local backend, and proxy path for license server to bypass CORS
+        const API_URL = "/api/v1"; 
+        const LICENSE_SERVER = "/license-srv";
 
-        // WHY: This script manages the entry point to the application based on license status.
-        // WHERE: It wraps all portal links (Admin, Employee, Face Scan) on the landing page.
-        // WHAT: Before allowing access to any portal, it pings the backend to check the license. 
-        // If the backend returns 402, it interrupts the navigation and displays the Activation Modal.
+        window.onload = () => {
+            lucide.createIcons();
+            setupLicenseTriggers();
+            
+            // Check if redirecting from a license error
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('license_required')) {
+                showLicenseModal();
+            }
+        };
+
         function setupLicenseTriggers() {
-            // Get Started बटण
-            document.getElementById('get-started-btn').onclick = (e) => {
-                e.preventDefault();
-                checkLicenseStatus(() => window.location.href = "/admin/");
-            };
+            // Get Started Button
+            const getStartedBtn = document.getElementById('get-started-btn');
+            if (getStartedBtn) {
+                getStartedBtn.onclick = (e) => {
+                    e.preventDefault();
+                    checkLicenseStatus(() => window.location.href = "/admin/");
+                };
+            }
 
-            // सर्व पोर्टल लिंक्स (Admin, Employee, Face)
+            // Portal Links
             document.querySelectorAll('.portal-link').forEach(link => {
                 link.onclick = (e) => {
                     e.preventDefault();

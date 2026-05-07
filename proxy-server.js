@@ -161,6 +161,13 @@ const server = http.createServer((req, res) => {
     return
   }
 
+  // License Server Proxy (To bypass CORS on landing page)
+  if (reqUrl.startsWith('/license-srv/')) {
+    const targetPath = reqUrl.replace('/license-srv/', '/api/')
+    req.url = targetPath
+    return proxy.web(req, res, { target: 'https://license.vrushaliinfotech.com', changeOrigin: true })
+  }
+
   // API / docs / health → ALWAYS proxy to backend (production & dev mode dono madhe)
   if (reqUrl.startsWith('/api/') || reqUrl === '/api' ||
       reqUrl === '/docs' || reqUrl.startsWith('/docs/') ||

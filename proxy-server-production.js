@@ -78,6 +78,12 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith('/employee/')) return serveStatic(req, res, req.url, EMP_DIST);
   if (req.url.startsWith('/face/')) return serveStatic(req, res, req.url, FACE_DIST);
 
+  // License Server Proxy
+  if (req.url.startsWith('/license-srv/')) {
+    req.url = req.url.replace('/license-srv/', '/api/')
+    return proxy.web(req, res, { target: 'https://license.vrushaliinfotech.com', changeOrigin: true });
+  }
+
   // API Proxy
   if (req.url.startsWith('/api/') || req.url === '/health') {
     return proxy.web(req, res, { target: TARGETS.api });
