@@ -24,7 +24,6 @@
     "recharts": "^2.10.3"
   },
   "devDependencies": {
-    "@rolldown/binding-win32-x64-msvc": "^1.0.0-rc.17",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^14.3.1",
     "@testing-library/user-event": "^14.6.1",
