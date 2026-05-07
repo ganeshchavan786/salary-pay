@@ -137,8 +137,9 @@ const server = http.createServer((req, res) => {
     return
   }
 
-  // Root URL / -> Serve landing.html
-  if (reqUrl === '/') {
+  // Root URL / -> Serve landing.html (Handles query params like ?license_required=1)
+  const pathname = reqUrl.split('?')[0]
+  if (pathname === '/' || pathname === '/index.html') {
     const landingPath = path.join(__dirname, 'landing.html')
     if (fs.existsSync(landingPath)) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })

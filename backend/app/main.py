@@ -86,31 +86,53 @@ app = FastAPI(
 )
 
 # ── LICENSE MIDDLEWARE ──
-# WHY: This middleware acts as a security gatekeeper for the entire application.
-# WHERE: It intercepts every HTTP request made to the API (except public/exempt paths).
-# WHAT: It calls is_license_valid() to verify the machine ID and expiry date. 
-# If invalid, it blocks the request with a 402 (Payment Required) status code, 
-# forcing the user to activate or renew the license.
 @app.middleware("http")
 async def license_check_middleware(request: Request, call_next):
-    # खालील पाथला लायसन्स चेक मधून सूट (Exempt) द्या
-    exempt_paths = ["/api/v1/license/", "/docs", "/openapi.json", "/redoc", "/api/debug/"]
+    # Exempt paths (Activation, Docs, Debug)
+    exempt_paths = ["/api/v1/license/", "/docs", "/openapi.json", "/redoc", "/api/debug/", "/api/status"]
     
     is_exempt = any(request.url.path.startswith(p) for p in exempt_paths) or request.url.path == "/"
     
     if not is_exempt:
-        valid, reason = is_license_valid()
-        if not valid:
+        from app.license_check import STATE_NORMAL, STATE_READ_ONLY, STATE_BLOCKED
+        status, reason = is_license_valid()
+        
+        # 1. BLOCKED STATE -> Full block
+        if status == STATE_BLOCKED:
             from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=402, # Payment Required
                 content={
-                    "detail": "LICENSE_REQUIRED",
+                    "detail": "LICENSE_BLOCKED",
                     "reason": reason,
-                    "message": "Software License Not Found or Expired. Please activate to continue."
+                    "message": "License expired or blocked. Please upgrade/renew to continue."
                 }
             )
-    
+            
+        # 2. READ_ONLY STATE -> Block Writes/Exports
+        if status == STATE_READ_ONLY:
+            # Check if this is a "Write" or "Export" operation
+            is_write = request.method in ["POST", "PUT", "DELETE", "PATCH"]
+            is_export = "export" in request.url.path.lower()
+            
+            if is_write or is_export:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=403, # Forbidden
+                    content={
+                        "detail": "LICENSE_READ_ONLY",
+                        "reason": reason,
+                        "message": "System is in Read-Only mode due to connection issues. Please connect to internet to reactivate."
+                    }
+                )
+            
+            # Allow GET requests in Read-Only mode (Viewing is allowed)
+            response = await call_next(request)
+            # Add a custom header to inform frontend it's read-only
+            response.headers["X-License-Status"] = "READ_ONLY"
+            return response
+
+    # 3. NORMAL STATE or EXEMPT -> Proceed normally
     response = await call_next(request)
     return response
 

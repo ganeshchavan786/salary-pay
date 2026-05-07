@@ -3,28 +3,55 @@ import json
 import uuid
 import httpx
 from datetime import datetime, timedelta
+from pathlib import Path
 
-# तुमच्या लायसन्स सर्व्हरचा पत्ता
-LICENSE_SERVER_URL = "http://localhost:8661/api"
+# LICENSE CONFIG
+LICENSE_SERVER_URL = "https://license.vrushaliinfotech.com/api"
 LICENSE_FILE = "license.json"
-CACHE_FILE = "license_cache.json"
-GRACE_PERIOD_DAYS = 5  # इंटरनेट नसल्यास किती दिवस ॲप चालेल
+
+# CACHE PATHS (Windows paths as requested)
+def get_cache_paths():
+    app_data_roaming = os.getenv('APPDATA') # AppData/Roaming
+    app_data_local = os.getenv('LOCALAPPDATA') # AppData/Local
+    
+    paths = []
+    if app_data_roaming:
+        p = Path(app_data_roaming) / "SalaryPay" / "license_cache.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        paths.append(str(p))
+    if app_data_local:
+        p = Path(app_data_local) / "SalaryPay" / "license_cache.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        paths.append(str(p))
+        
+    # Fallback to current dir if environment variables fail
+    if not paths:
+        paths.append("license_cache.json")
+    return paths
 
 def get_machine_id():
-    """तुमच्या कॉम्प्युटरचा एक युनिक आयडी काढतो"""
+    """Uniquely identifies this machine"""
     return str(uuid.getnode())
 
-# WHY: This function is the core engine for license enforcement.
-# WHERE: Called by license_check_middleware in main.py for every restricted API call.
-# WHAT: 1. It attempts to validate the license online with the License Server.
-#       2. If successful, it updates a local encrypted cache (CACHE_FILE).
-#       3. If offline, it allows the app to run for a 5-day grace period using the cache.
-#       4. It ensures the license is tied to the unique hardware ID (machine_id).
+# STATES
+STATE_NORMAL = "NORMAL"
+STATE_READ_ONLY = "READ_ONLY"
+STATE_BLOCKED = "BLOCKED"
+
 def is_license_valid():
+    """
+    Core Logic:
+    1. Online Check -> Valid? NORMAL. Invalid? BLOCKED.
+    2. Unreachable? -> Check Cache.
+       - No Cache? READ_ONLY.
+       - Valid Cache? NORMAL.
+       - Expired Cache? READ_ONLY.
+    """
     machine_id = get_machine_id()
     
+    # 0. Check if license key exists
     if not os.path.exists(LICENSE_FILE):
-        return False, "License file not found"
+        return STATE_READ_ONLY, "License key not found. Please activate."
         
     license_key = None
     try:
@@ -32,62 +59,86 @@ def is_license_valid():
             data = json.load(f)
             license_key = data.get("license_key")
     except:
-        return False, "Error reading license file"
+        return STATE_READ_ONLY, "Error reading license file."
 
-    # १. आधी ऑनलाईन चेक करण्याचा प्रयत्न करा
+    # 1. Try Online Validation
     try:
+        # Use a short timeout to not block app startup too long
         response = httpx.post(
             f"{LICENSE_SERVER_URL}/license/validate",
             json={"machine_id": machine_id, "license_key": license_key},
-            timeout=3.0 # लवकर टाईमआऊट द्या जेणेकरून ऑफलाईन युजरला जास्त वेळ वाट पाहावी लागणार नाही
+            timeout=5.0
         )
         
         if response.status_code == 200:
             result = response.json()
             if result.get("valid"):
-                # ऑनलाईन चेक यशस्वी! आता कॅश अपडेट करा.
-                save_license_cache(result)
-                return True, "Valid (Online)"
+                # SERVER SAYS VALID -> Update Cache and return NORMAL
+                save_license_cache(result, license_key)
+                return STATE_NORMAL, "Validated Online"
             else:
-                return False, result.get("reason", "Invalid license")
-                
-    except (httpx.ConnectError, httpx.TimeoutException):
-        # २. जर इंटरनेट नसेल, तर ऑफलाईन कॅश तपासा
-        return check_offline_cache()
-    except Exception as e:
-        return False, f"System Error: {str(e)}"
-    
-    return False, "License validation failed"
-
-def save_license_cache(result):
-    """ऑनलाईन निकाल लोकल फाईलमध्ये सेव्ह करतो"""
-    cache_data = {
-        "last_check": datetime.now().isoformat(),
-        "valid_till": result.get("valid_till"),
-        "plan": result.get("plan")
-    }
-    with open(CACHE_FILE, 'w') as f:
-        json.dump(cache_data, f)
-
-def check_offline_cache():
-    """इंटरनेट नसताना लोकल कॅशवरून परमिशन देतो"""
-    if not os.path.exists(CACHE_FILE):
-        return False, "Internet required for first-time activation"
+                # SERVER SAYS EXPLICITLY INVALID -> BLOCKED
+                return STATE_BLOCKED, result.get("message", "License expired or blocked.")
         
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError):
+        # SERVER UNREACHABLE (No Internet) -> Fallback to Cache
+        return check_cache_fallback()
+    except Exception as e:
+        print(f"License Error: {str(e)}")
+        return STATE_READ_ONLY, "System Error. Running in Read-Only mode."
+    
+    return STATE_READ_ONLY, "Unknown connection status."
+
+def save_license_cache(result, license_key):
+    """Saves encrypted cache provided by server to 2 locations"""
+    cache_data = {
+        "license_key": license_key,
+        "plan": result.get("plan"),
+        "features": result.get("features", []),
+        "valid_till": result.get("valid_till"),
+        "grace_period_days": result.get("grace_period_days", 5),
+        "last_online": datetime.now().isoformat(),
+        "encrypted_cache": result.get("encrypted_cache") # Server provided encrypted string
+    }
+    
+    for path in get_cache_paths():
+        try:
+            with open(path, 'w') as f:
+                json.dump(cache_data, f, indent=4)
+        except Exception as e:
+            print(f"Failed to save cache to {path}: {e}")
+
+def check_cache_fallback():
+    """Fallback logic when internet is missing"""
+    cache = None
+    
+    # Try reading from any available cache path
+    for path in get_cache_paths():
+        if os.path.exists(path):
+            try:
+                with open(path, 'r') as f:
+                    cache = json.load(f)
+                break # Use the first successful read
+            except:
+                continue
+                
+    if not cache:
+        return STATE_READ_ONLY, "No internet and no cache found."
+
     try:
-        with open(CACHE_FILE, 'r') as f:
-            cache = json.load(f)
-            
-        last_check = datetime.fromisoformat(cache["last_check"])
-        grace_expiry = last_check + timedelta(days=GRACE_PERIOD_DAYS)
+        last_online = datetime.fromisoformat(cache["last_online"])
+        grace_days = cache.get("grace_period_days", 5)
+        grace_expiry = last_online + timedelta(days=grace_days)
         
         if datetime.now() < grace_expiry:
-            # ५ दिवसांच्या आत आहे, म्हणून परवानगी द्या
+            # Within Grace Period -> NORMAL (but with a warning in logs)
             days_left = (grace_expiry - datetime.now()).days
-            print(f"⚠️ App running in OFFLINE mode. {days_left} days left before internet is required.")
-            return True, f"Offline Mode ({days_left} days left)"
+            print(f"OFFLINE: License valid via cache. {days_left} days remaining in grace period.")
+            return STATE_NORMAL, f"Offline Mode ({days_left} days left)"
         else:
-            return False, "Grace period expired. Please connect to internet."
+            # Grace Period Expired -> READ_ONLY
+            return STATE_READ_ONLY, "Grace period expired. Internet connection required."
             
-    except:
-        return False, "License cache corrupted. Connect to internet."
+    except Exception as e:
+        print(f"Cache check error: {e}")
+        return STATE_READ_ONLY, "Cache corrupted. Internet connection required."

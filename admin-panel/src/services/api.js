@@ -60,13 +60,29 @@ api.interceptors.response.use(
       })
     }
 
-    // WHY: This is the "Security Guard" of the frontend.
-    // WHERE: It intercepts every single API response from the backend.
-    // WHAT: If the backend sends a 402 (Payment Required) status, it means the license is invalid.
-    // The interceptor immediately redirects the user to the Landing Page activation screen.
+    // ── LICENSE SECURITY HANDLER ──
+    // Handle Blocked License (Expired or explicitly blocked)
     if (error.response?.status === 402) {
-      window.location.href = '/?license_required=1'
+      if (error.response.data?.detail === "LICENSE_BLOCKED") {
+        window.location.href = '/?license_required=1'
+      } else {
+        // Handle generic 402 if any
+        window.location.href = '/?license_required=1'
+      }
       return Promise.reject(error)
+    }
+
+    // Handle Read-Only Mode (Connection required)
+    if (error.response?.status === 403) {
+      if (error.response.data?.detail === "LICENSE_READ_ONLY") {
+        // We don't necessarily want to redirect, but we might want to show a toast or alert
+        // The persistent banner in Layout.jsx already informs the user.
+        console.warn("Operation blocked: System is in Read-Only mode.")
+        return Promise.reject({
+          ...error,
+          message: "System is in Read-Only mode. Please connect to internet to perform this action."
+        })
+      }
     }
 
     // Only handle 401 errors

@@ -61,7 +61,7 @@ const server = http.createServer((req, res) => {
   // Landing Page at Root (Handles ?query params too)
   const pathname = req.url.split('?')[0];
   if (pathname === '/' || pathname === '/index.html') {
-    const landingPath = path.join(__dirname, '..', 'landing.html');
+    const landingPath = path.join(__dirname, 'landing.html');
     if (fs.existsSync(landingPath)) {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       return fs.createReadStream(landingPath).pipe(res);

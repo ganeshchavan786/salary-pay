@@ -24,6 +24,9 @@ import {
   ChevronRight,
   Banknote,
   ExternalLink,
+  AlertCircle,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -59,21 +62,40 @@ export default function Layout({ children }) {
   const isSalaryActive = location.pathname.startsWith('/salary')
   const [salaryOpen, setSalaryOpen] = useState(isSalaryActive)
 
-  // ── License Check ──
+  // ── License Check & Background Recovery ──
   const [license, setLicense] = useState(null)
+  const [isReadOnly, setIsReadOnly] = useState(false)
   
-  useEffect(() => {
-    const fetchLicense = async () => {
-      try {
-        const res = await fetch('http://localhost:8551/api/v1/license/info')
-        const data = await res.json()
-        if (data.active) setLicense(data)
-      } catch (err) {
-        console.error("License fetch failed")
+  const fetchLicense = async () => {
+    try {
+      const res = await fetch('/api/v1/license/info')
+      const data = await res.json()
+      
+      const wasReadOnly = isReadOnly
+      setLicense(data)
+      setIsReadOnly(data.status === 'READ_ONLY')
+
+      // If we recovered from Read-Only to Normal
+      if (wasReadOnly && data.status === 'NORMAL') {
+        // You could add a toast notification here
+        console.log("License reactivated successfully")
       }
+      
+      // If server says BLOCKED, hard redirect
+      if (data.status === 'BLOCKED') {
+        window.location.href = '/?license_required=1'
+      }
+    } catch (err) {
+      console.error("License fetch failed")
     }
+  }
+
+  useEffect(() => {
     fetchLicense()
-  }, [])
+    // Background retry every 5 minutes
+    const interval = setInterval(fetchLicense, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [isReadOnly])
 
   // Keep in sync when navigating
   useEffect(() => {
@@ -236,24 +258,41 @@ export default function Layout({ children }) {
           {/* WHAT: It displays the current plan (Trial/Gold) and a countdown of remaining days. 
               The "Renew" button opens the License Server's checkout page for online payment. */}
           {license && (
-            <div className="mx-1 mt-2 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+            <div className={`mx-1 mt-2 p-3 rounded-xl border ${
+              isReadOnly ? 'bg-amber-50 border-amber-200' : 'bg-indigo-50 border-indigo-100'
+            }`}>
               <div className="flex items-center gap-2 mb-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">License Status</span>
+                {isReadOnly ? (
+                  <WifiOff className="w-3.5 h-3.5 text-amber-600" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                )}
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                  isReadOnly ? 'text-amber-700' : 'text-indigo-700'
+                }`}>
+                  {isReadOnly ? 'Offline Mode' : 'License Status'}
+                </span>
               </div>
               <div className="flex justify-between items-end">
                 <div>
                   <p className="text-xs font-bold text-gray-800 capitalize">{license.plan} Plan</p>
-                  <p className={`text-[10px] font-semibold ${license.days_remaining <= 2 ? 'text-red-500' : 'text-indigo-600'}`}>
-                    {license.days_remaining} Days Remaining
+                  <p className={`text-[10px] font-semibold ${
+                    license.days_remaining <= 2 || isReadOnly ? 'text-red-500' : 'text-indigo-600'
+                  }`}>
+                    {isReadOnly ? 'Connect Internet' : `${license.days_remaining} Days Left`}
                   </p>
                 </div>
-                <button 
-                  onClick={() => window.open(`http://localhost:8661/checkout?key=${license.license_key}`, '_blank')}
-                  className="text-[10px] bg-white border border-indigo-200 text-indigo-600 px-2 py-0.5 rounded-md font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1"
-                >
-                  <ExternalLink size={10} /> Renew
-                </button>
+                {!isReadOnly && (
+                  <button 
+                    onClick={() => window.open(`https://license.vrushaliinfotech.com/checkout?key=${license.license_key_masked}`, '_blank')}
+                    className="text-[10px] bg-white border border-indigo-200 text-indigo-600 px-2 py-0.5 rounded-md font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1"
+                  >
+                    <ExternalLink size={10} /> Renew
+                  </button>
+                )}
+              </div>
+              <div className="mt-2 pt-2 border-t border-black/5">
+                <p className="text-[8px] text-gray-400 font-mono truncate">ID: {license.machine_id}</p>
               </div>
             </div>
           )}
@@ -282,6 +321,25 @@ export default function Layout({ children }) {
 
       {/* Main content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+        {/* Read-Only Banner */}
+        {isReadOnly && (
+          <div className="bg-amber-500 text-white px-6 py-2 flex items-center justify-between sticky top-14 lg:top-0 z-30 shadow-md">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 animate-pulse" />
+              <p className="text-sm font-bold">
+                No internet connection detected. Please connect to the internet to reactivate your license. 
+                <span className="font-normal ml-2 opacity-90">(Read-Only Mode)</span>
+              </p>
+            </div>
+            <button 
+              onClick={fetchLicense}
+              className="flex items-center gap-1 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors font-semibold"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Retry Now
+            </button>
+          </div>
+        )}
+        
         <div className="p-6">
           {children}
         </div>
