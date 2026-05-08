@@ -77,8 +77,14 @@ def is_license_valid():
                 save_license_cache(result, license_key)
                 return STATE_NORMAL, "Validated Online"
             else:
-                # SERVER SAYS EXPLICITLY INVALID -> BLOCKED
-                return STATE_BLOCKED, result.get("message", "License expired or blocked.")
+                # SERVER SAYS EXPLICITLY INVALID
+                reason = result.get("reason", "")
+                if result.get("support_required") or reason == "blocked":
+                    # Admin ने block केलं — support contact दाखवायचं
+                    return STATE_BLOCKED, "SUPPORT_REQUIRED"
+                else:
+                    # Expired किंवा invalid — basic features दाखवायचं
+                    return STATE_READ_ONLY, reason or "License expired."
         
     except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError):
         # SERVER UNREACHABLE (No Internet) -> Fallback to Cache

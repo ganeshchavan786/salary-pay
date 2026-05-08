@@ -61,26 +61,27 @@ api.interceptors.response.use(
     }
 
     // ── LICENSE SECURITY HANDLER ──
-    // Handle Blocked License (Expired or explicitly blocked)
     if (error.response?.status === 402) {
-      if (error.response.data?.detail === "LICENSE_BLOCKED") {
-        window.location.href = '/?license_required=1'
+      const data = error.response.data || {}
+      if (data.support_required || data.reason === 'support_required') {
+        // Admin ने block केलं — support contact दाखवायचं
+        // Block का झाला ते customer ला सांगायचं नाही
+        window.location.href = '/?contact_support=1'
       } else {
-        // Handle generic 402 if any
+        // Trial/Paid expired — renewal page
         window.location.href = '/?license_required=1'
       }
       return Promise.reject(error)
     }
 
-    // Handle Read-Only Mode (Connection required)
+    // Handle Read-Only Mode — basic features allow, writes block
     if (error.response?.status === 403) {
       if (error.response.data?.detail === "LICENSE_READ_ONLY") {
-        // We don't necessarily want to redirect, but we might want to show a toast or alert
-        // The persistent banner in Layout.jsx already informs the user.
-        console.warn("Operation blocked: System is in Read-Only mode.")
+        console.warn("Operation blocked: Basic mode active.")
         return Promise.reject({
           ...error,
-          message: "System is in Read-Only mode. Please connect to internet to perform this action."
+          message: "Please renew your subscription to use this feature.",
+          isLicenseReadOnly: true
         })
       }
     }

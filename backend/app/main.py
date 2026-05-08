@@ -97,38 +97,51 @@ async def license_check_middleware(request: Request, call_next):
         from app.license_check import STATE_NORMAL, STATE_READ_ONLY, STATE_BLOCKED
         status, reason = is_license_valid()
         
-        # 1. BLOCKED STATE -> Full block
+        # 1. BLOCKED STATE -> Full block with support message
         if status == STATE_BLOCKED:
             from fastapi.responses import JSONResponse
+            # Support details Settings मधून घ्या
+            support_message = "Please contact support to reactivate your account."
+            if reason == "SUPPORT_REQUIRED":
+                support_message = "Please contact support to reactivate your account."
             return JSONResponse(
-                status_code=402, # Payment Required
+                status_code=402,
                 content={
                     "detail": "LICENSE_BLOCKED",
-                    "reason": reason,
-                    "message": "License expired or blocked. Please upgrade/renew to continue."
+                    "reason": "support_required",
+                    "message": support_message,
+                    "support_required": True,
+                    # Customer ला block का झाला ते सांगायचं नाही
                 }
             )
             
-        # 2. READ_ONLY STATE -> Block Writes/Exports
+        # 2. READ_ONLY STATE -> Basic features only
         if status == STATE_READ_ONLY:
-            # Check if this is a "Write" or "Export" operation
+            # Basic features — Attendance बघणे + Employee list बघणे (read-only)
+            BASIC_ALLOWED_PATHS = [
+                "/api/attendance",
+                "/api/employees",
+                "/api/auth",
+                "/api/dashboard",
+            ]
+            is_basic_allowed = any(request.url.path.startswith(p) for p in BASIC_ALLOWED_PATHS)
             is_write = request.method in ["POST", "PUT", "DELETE", "PATCH"]
             is_export = "export" in request.url.path.lower()
-            
+
             if is_write or is_export:
                 from fastapi.responses import JSONResponse
                 return JSONResponse(
-                    status_code=403, # Forbidden
+                    status_code=403,
                     content={
                         "detail": "LICENSE_READ_ONLY",
                         "reason": reason,
-                        "message": "System is in Read-Only mode due to connection issues. Please connect to internet to reactivate."
+                        "message": "Please renew your subscription to use this feature.",
+                        "basic_mode": True,
                     }
                 )
-            
-            # Allow GET requests in Read-Only mode (Viewing is allowed)
+
+            # GET requests — basic paths allow करा
             response = await call_next(request)
-            # Add a custom header to inform frontend it's read-only
             response.headers["X-License-Status"] = "READ_ONLY"
             return response
 
