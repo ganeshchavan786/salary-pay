@@ -38,6 +38,8 @@ echo "💻 Building Frontends..."
 # Admin Panel
 echo "--- Building Admin Panel ---"
 cd $PROJECT_ROOT/admin-panel
+# VITE_BASE_PATH set करा — /admin/ prefix साठी
+echo "VITE_BASE_PATH=/admin/" > .env.local
 npm install
 npm run build
 
@@ -56,40 +58,35 @@ npm run build
 # 5. Nginx Configuration
 echo "🌐 Configuring Nginx..."
 
-cat <<EOF | sudo tee /etc/nginx/sites-available/hrms
+cat <<'NGINXEOF' | sudo tee /etc/nginx/sites-available/hrms
 server {
     listen 80;
-    server_name _; # Change this to your domain later
+    server_name _;
 
-    # Landing Page
     location / {
-        root $PROJECT_ROOT;
+        root PROJECT_ROOT_PLACEHOLDER;
         index landing.html;
-        try_files \$uri \$uri/ /landing.html;
+        try_files $uri $uri/ /landing.html;
     }
 
-    # Admin Panel
     location /admin/ {
-        alias $PROJECT_ROOT/admin-panel/dist/;
+        alias PROJECT_ROOT_PLACEHOLDER/admin-panel/dist/;
         index index.html;
-        try_files \$uri \$uri/ /admin/index.html;
+        try_files $uri $uri/ /admin/index.html;
     }
 
-    # Employee App
     location /employee/ {
-        alias $PROJECT_ROOT/employee-app/dist/;
+        alias PROJECT_ROOT_PLACEHOLDER/employee-app/dist/;
         index index.html;
-        try_files \$uri \$uri/ /employee/index.html;
+        try_files $uri $uri/ /employee/index.html;
     }
 
-    # Face PWA App
     location /face/ {
-        alias $PROJECT_ROOT/pwa-app/dist/;
+        alias PROJECT_ROOT_PLACEHOLDER/pwa-app/dist/;
         index index.html;
-        try_files \$uri \$uri/ /face/index.html;
+        try_files $uri $uri/ /face/index.html;
     }
 
-    # API Proxy to FastAPI
     location /api/ {
         proxy_pass http://127.0.0.1:8401;
         proxy_set_header Host $host;
@@ -98,7 +95,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # License Server Proxy (CORS fix for Landing Page)
     location /license-srv/ {
         proxy_pass https://license.vrushaliinfotech.com/api/;
         proxy_set_header Host license.vrushaliinfotech.com;
@@ -108,7 +104,10 @@ server {
         proxy_ssl_server_name on;
     }
 }
-EOF
+NGINXEOF
+
+# PROJECT_ROOT replace करा
+sudo sed -i "s|PROJECT_ROOT_PLACEHOLDER|$PROJECT_ROOT|g" /etc/nginx/sites-available/hrms
 
 # Enable the config and restart Nginx
 sudo ln -s /etc/nginx/sites-available/hrms /etc/nginx/sites-enabled/
