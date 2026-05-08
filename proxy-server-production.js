@@ -11,7 +11,7 @@ const PORT = 3401;
 const ADMIN_DIST = path.join(__dirname, '..', 'public', 'admin');
 const EMP_DIST = path.join(__dirname, '..', 'public', 'employee');
 const FACE_DIST = path.join(__dirname, '..', 'public', 'face');
-const TARGETS = { api: 'http://localhost:8401' };
+const TARGETS = { api: 'http://127.0.0.1:8401' };
 
 const MIME = {
   '.html': 'text/html',
