@@ -25,7 +25,7 @@ const PWA_DIST = path.join(__dirname, 'pwa-app', 'dist')
 const EMP_DIST = path.join(__dirname, 'employee-app', 'dist')
 
 const TARGETS = {
-  api:      'http://localhost:8551',
+  api:      'http://localhost:8401',
   pwa:      'http://localhost:5173',
   admin:    'http://localhost:3551',
   employee: 'http://localhost:5174',
@@ -89,7 +89,7 @@ function resolveTarget(reqUrl) {
 }
 
 function resolveHost(target) {
-  if (target === TARGETS.api)   return 'localhost:8551'
+  if (target === TARGETS.api)   return 'localhost:8401'
   if (target === TARGETS.admin) return 'localhost:3551'
   return 'localhost:5173'
 }
