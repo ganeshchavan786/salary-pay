@@ -25,10 +25,10 @@ const PWA_DIST = path.join(__dirname, 'pwa-app', 'dist')
 const EMP_DIST = path.join(__dirname, 'employee-app', 'dist')
 
 const TARGETS = {
-  api:      'http://localhost:8401',
-  pwa:      'http://localhost:5173',
-  admin:    'http://localhost:3551',
-  employee: 'http://localhost:5174',
+  api:      'http://127.0.0.1:8401',
+  pwa:      'http://127.0.0.1:5173',
+  admin:    'http://127.0.0.1:3551',
+  employee: 'http://127.0.0.1:5174',
 }
 
 // MIME types for static files
