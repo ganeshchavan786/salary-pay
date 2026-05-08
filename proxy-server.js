@@ -19,7 +19,7 @@ const httpProxy = require('http-proxy')
 const fs = require('fs')
 const path = require('path')
 
-const PORT = 8080
+const PORT = 8090
 const ADMIN_DIST = path.join(__dirname, 'admin-panel', 'dist')
 const PWA_DIST = path.join(__dirname, 'pwa-app', 'dist')
 const EMP_DIST = path.join(__dirname, 'employee-app', 'dist')
