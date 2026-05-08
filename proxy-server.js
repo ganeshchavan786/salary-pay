@@ -174,7 +174,7 @@ const server = http.createServer((req, res) => {
       reqUrl === '/redoc' || reqUrl.startsWith('/redoc/') ||
       reqUrl.startsWith('/openapi') || reqUrl === '/health') {
     req.headers['x-forwarded-for'] = req.socket.remoteAddress || 'unknown'
-    req.headers['host'] = 'localhost:8551'
+    req.headers['host'] = 'localhost:8401'
     proxy.web(req, res, { target: TARGETS.api })
     return
   }
