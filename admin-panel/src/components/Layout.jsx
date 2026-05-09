@@ -27,6 +27,8 @@ import {
   AlertCircle,
   WifiOff,
   RefreshCw,
+  Lock,
+  Zap,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -34,12 +36,11 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/employees', label: 'Employees', icon: Users },
   { path: '/attendance', label: 'Attendance', icon: CalendarCheck },
-  { path: '/leaves', label: 'Leaves', icon: FileText },
-  // { path: '/payroll', label: 'Payroll', icon: DollarSign }, // Disabled old Payroll menu as per user request
-  { path: '/salary', label: 'Salary System', icon: Banknote, isSalaryMenu: true },
-  { path: '/holidays', label: 'Holidays', icon: CalendarDays },
-  { path: '/reports', label: 'Reports', icon: BarChart2 },
-  { path: '/audit', label: 'Audit Log', icon: ClipboardList },
+  { path: '/leaves', label: 'Leaves', icon: FileText, requiresPaid: true },
+  { path: '/salary', label: 'Salary System', icon: Banknote, isSalaryMenu: true, requiresPaid: true },
+  { path: '/holidays', label: 'Holidays', icon: CalendarDays, requiresPaid: true },
+  { path: '/reports', label: 'Reports', icon: BarChart2, requiresPaid: true },
+  { path: '/audit', label: 'Audit Log', icon: ClipboardList, requiresPaid: true },
 ]
 
 const salaryNavItems = [
@@ -65,6 +66,7 @@ export default function Layout({ children }) {
   // ── License Check & Background Recovery ──
   const [license, setLicense] = useState(null)
   const [isReadOnly, setIsReadOnly] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   
   const fetchLicense = async () => {
     try {
@@ -164,27 +166,38 @@ export default function Layout({ children }) {
 
             // ── Salary System collapsible menu ──
             if (item.path === '/salary') {
+              const isSalaryLocked = isReadOnly && item.requiresPaid
               return (
                 <div key="salary-menu" className="mt-0.5">
                   <button
-                    onClick={() => setSalaryOpen(o => !o)}
+                    onClick={() => {
+                      if (isSalaryLocked) {
+                        setShowUpgradeModal(true)
+                      } else {
+                        setSalaryOpen(o => !o)
+                      }
+                    }}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group
-                      ${isSalaryActive
-                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ${isSalaryLocked
+                        ? 'text-gray-400 hover:bg-gray-50'
+                        : isSalaryActive
+                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }
                     `}
                   >
-                    <Banknote className={`w-4 h-4 flex-shrink-0 ${isSalaryActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                    <Banknote className={`w-4 h-4 flex-shrink-0 ${isSalaryLocked ? 'text-gray-300' : isSalaryActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
                     <span className="text-sm flex-1 text-left">Salary System</span>
-                    {salaryOpen
-                      ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                      : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                    {isSalaryLocked
+                      ? <Lock className="w-3 h-3 text-gray-300" />
+                      : salaryOpen
+                        ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                        : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                     }
                   </button>
 
-                  {salaryOpen && (
+                  {!isSalaryLocked && salaryOpen && (
                     <div className="mt-0.5 ml-3 pl-3 border-l-2 border-blue-100 space-y-0.5">
                       {salaryNavItems.map((sub) => {
                         const SubIcon = sub.icon
@@ -215,23 +228,43 @@ export default function Layout({ children }) {
             }
 
             // ── Regular nav item ──
+            const isLocked = isReadOnly && item.requiresPaid
             return (
-              <Link
+              <div
                 key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group
-                  ${isActive
-                    ? 'bg-blue-50 text-blue-700 font-semibold'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                onClick={() => {
+                  if (isLocked) {
+                    setShowUpgradeModal(true)
+                    setSidebarOpen(false)
+                  } else {
+                    setSidebarOpen(false)
                   }
-                `}
+                }}
               >
-                <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
-                <span className="text-sm">{item.label}</span>
-                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />}
-              </Link>
+                {isLocked ? (
+                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-gray-400 hover:bg-gray-50 transition-all duration-150 group">
+                    <Icon className="w-4 h-4 flex-shrink-0 text-gray-300" />
+                    <span className="text-sm flex-1">{item.label}</span>
+                    <Lock className="w-3 h-3 text-gray-300" />
+                  </div>
+                ) : (
+                  <Link
+                    to={item.path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group
+                      ${isActive
+                        ? 'bg-blue-50 text-blue-700 font-semibold'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }
+                    `}
+                  >
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                    <span className="text-sm">{item.label}</span>
+                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                  </Link>
+                )}
+              </div>
             )
           })}
 
@@ -282,7 +315,12 @@ export default function Layout({ children }) {
                   <p className={`text-[10px] font-semibold ${
                     license.days_remaining <= 2 || isReadOnly ? 'text-red-500' : 'text-indigo-600'
                   }`}>
-                    {isReadOnly ? 'Connect Internet' : `${license.days_remaining} Days Left`}
+                    {isReadOnly
+                      ? 'Renew to unlock all features'
+                      : license.plan === 'free'
+                        ? 'Limited features'
+                        : `${license.days_remaining} Days Left`
+                    }
                   </p>
                 </div>
                 {!isReadOnly && (
@@ -324,7 +362,44 @@ export default function Layout({ children }) {
 
       {/* Main content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
-        {/* Expired / Read-Only Banner */}
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center">
+            <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-orange-500" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Feature Locked</h2>
+            <p className="text-gray-500 text-sm mb-6">
+              This feature requires an active subscription. Renew your plan to unlock all features.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  const customerId = license?.customer_id
+                  if (customerId) {
+                    window.open(`https://license.vrushaliinfotech.com/checkout?customer_id=${customerId}&plan=basic`, '_blank')
+                  }
+                  setShowUpgradeModal(false)
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+              >
+                <Zap className="w-4 h-4" />
+                Renew Now — ₹499/month
+              </button>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full py-2.5 text-gray-500 text-sm hover:text-gray-700 transition-colors"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expired / Read-Only Banner */}
         {isReadOnly && (
           <div className="bg-orange-500 text-white px-6 py-2.5 flex items-center justify-between sticky top-14 lg:top-0 z-30 shadow-md">
             <div className="flex items-center gap-3">

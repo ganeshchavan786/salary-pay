@@ -75,14 +75,16 @@ def is_license_valid():
             if result.get("valid"):
                 # Expired check करा
                 if result.get("is_expired"):
-                    # Trial/Paid expire झाली → READ_ONLY (basic features only)
                     save_license_cache(result, license_key)
                     return STATE_READ_ONLY, "Subscription expired. Please renew."
-                # SERVER SAYS VALID -> Update Cache and return NORMAL
+                # Free plan → READ_ONLY (basic features only)
+                if result.get("plan") == "free":
+                    save_license_cache(result, license_key)
+                    return STATE_READ_ONLY, "Free plan. Upgrade to unlock all features."
+                # SERVER SAYS VALID -> NORMAL
                 save_license_cache(result, license_key)
                 return STATE_NORMAL, "Validated Online"
             else:
-                # SERVER SAYS EXPLICITLY INVALID
                 reason = result.get("reason", "")
                 if result.get("support_required") or reason == "blocked":
                     return STATE_BLOCKED, "SUPPORT_REQUIRED"
