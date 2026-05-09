@@ -81,9 +81,9 @@ export default function Layout({ children }) {
         console.log("License reactivated successfully")
       }
       
-      // If server says BLOCKED, hard redirect
+      // If server says BLOCKED, hard redirect — support modal दाखवायचं
       if (data.status === 'BLOCKED') {
-        window.location.href = '/?license_required=1'
+        window.location.href = '/?contact_support=1'
       }
     } catch (err) {
       console.error("License fetch failed")
@@ -321,22 +321,34 @@ export default function Layout({ children }) {
 
       {/* Main content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
-        {/* Read-Only Banner */}
+        {/* Expired / Read-Only Banner */}
         {isReadOnly && (
-          <div className="bg-amber-500 text-white px-6 py-2 flex items-center justify-between sticky top-14 lg:top-0 z-30 shadow-md">
+          <div className="bg-orange-500 text-white px-6 py-2.5 flex items-center justify-between sticky top-14 lg:top-0 z-30 shadow-md">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 animate-pulse" />
-              <p className="text-sm font-bold">
-                No internet connection detected. Please connect to the internet to reactivate your license. 
-                <span className="font-normal ml-2 opacity-90">(Read-Only Mode)</span>
-              </p>
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-bold">Subscription expired.</p>
+                <p className="text-xs opacity-90">
+                  You can view Attendance and Employees. Renew to unlock all features.
+                </p>
+              </div>
             </div>
-            <button 
-              onClick={fetchLicense}
-              className="flex items-center gap-1 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors font-semibold"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Retry Now
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={fetchLicense}
+                className="flex items-center gap-1 text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors font-semibold"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Retry
+              </button>
+              {license?.customer_id && (
+                <button
+                  onClick={() => window.open(`https://license.vrushaliinfotech.com/checkout?customer_id=${license.customer_id}&plan=basic`, '_blank')}
+                  className="flex items-center gap-1 text-xs bg-white text-orange-600 hover:bg-orange-50 px-3 py-1 rounded-full transition-colors font-bold"
+                >
+                  Renew Now →
+                </button>
+              )}
+            </div>
           </div>
         )}
         

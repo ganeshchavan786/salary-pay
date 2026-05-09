@@ -425,7 +425,12 @@
                         alert("Error saving license to backend.");
                     }
                 } else {
-                    alert("Registration failed: " + (regData.detail || "Unknown error"));
+                    const errMsg = regData.detail || "Unknown error";
+                    if (errMsg.includes("already registered")) {
+                        alert("⚠️ This email is already registered.\n\nPlease contact support if you need help:\n📧 support@vrushaliinfotech.com\n📞 +91 99216 40630");
+                    } else {
+                        alert("Registration failed: " + errMsg);
+                    }
                 }
             } catch (err) {
                 alert("Network error. Make sure both servers are running.");
