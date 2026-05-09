@@ -88,8 +88,17 @@ app = FastAPI(
 # ── LICENSE MIDDLEWARE ──
 @app.middleware("http")
 async def license_check_middleware(request: Request, call_next):
-    # Exempt paths (Activation, Docs, Debug)
-    exempt_paths = ["/api/v1/license/", "/docs", "/openapi.json", "/redoc", "/api/debug/", "/api/status"]
+    # Exempt paths — license check नको
+    exempt_paths = [
+        "/api/v1/license/",
+        "/api/auth/",          # Login exempt — license check नको
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+        "/api/debug/",
+        "/api/status",
+        "/health",
+    ]
     
     is_exempt = any(request.url.path.startswith(p) for p in exempt_paths) or request.url.path == "/"
     
