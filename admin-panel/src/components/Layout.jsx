@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { LicenseContext } from '../context/LicenseContext'
+import LicenseContext from '../context/LicenseContext'
 import {
   LayoutDashboard,
   Users,
@@ -108,6 +110,7 @@ export default function Layout({ children }) {
   }, [isSalaryActive])
 
   return (
+    <LicenseContext.Provider value={{ isReadOnly, license, showUpgradeModal: () => setShowUpgradeModal(true) }}>
     <div className="min-h-screen bg-gray-50">
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
@@ -435,5 +438,6 @@ export default function Layout({ children }) {
         </div>
       </main>
     </div>
+    </LicenseContext.Provider>
   )
 }

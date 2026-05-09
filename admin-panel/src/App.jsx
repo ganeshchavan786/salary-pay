@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { useLicense } from './context/LicenseContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Employees from './pages/Employees'
@@ -9,7 +10,6 @@ import EmployeeReports from './pages/EmployeeReports'
 import FaceEnrollment from './pages/FaceEnrollment'
 import Attendance from './pages/Attendance'
 import Leaves from './pages/Leaves'
-// import Payroll from './pages/Payroll' // Disabled old Payroll menu as per user request
 import Holidays from './pages/Holidays'
 import AuditLog from './pages/AuditLog'
 import Settings from './pages/Settings'
@@ -42,6 +42,23 @@ function ProtectedRoute({ children }) {
   return <Layout>{children}</Layout>
 }
 
+// Locked route — READ_ONLY असेल तर Upgrade Modal दाखवतो
+function LockedRoute({ children }) {
+  const { user, loading } = useAuth()
+  const { isReadOnly, showUpgradeModal } = useLicense()
+
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+
+  if (isReadOnly) {
+    // Upgrade modal trigger करा
+    setTimeout(() => showUpgradeModal(), 50)
+    return <Navigate to="/" replace />
+  }
+
+  return <Layout>{children}</Layout>
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -52,20 +69,20 @@ function AppRoutes() {
       <Route path="/employees/:id/enroll" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
       <Route path="/employees/:id" element={<ProtectedRoute><EmployeeProfile /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-      <Route path="/leaves" element={<ProtectedRoute><Leaves /></ProtectedRoute>} />
+      <Route path="/leaves" element={<LockedRoute><Leaves /></LockedRoute>} />
       {/* <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} /> */}
-      <Route path="/holidays" element={<ProtectedRoute><Holidays /></ProtectedRoute>} />
-      <Route path="/audit" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
+      <Route path="/holidays" element={<LockedRoute><Holidays /></LockedRoute>} />
+      <Route path="/audit" element={<LockedRoute><AuditLog /></LockedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-      <Route path="/salary/periods" element={<ProtectedRoute><PayrollPeriods /></ProtectedRoute>} />
-      <Route path="/salary/calculation" element={<ProtectedRoute><SalaryCalculation /></ProtectedRoute>} />
-      <Route path="/salary/payslips" element={<ProtectedRoute><Payslips /></ProtectedRoute>} />
-      <Route path="/salary/payheads" element={<ProtectedRoute><PayheadConfig /></ProtectedRoute>} />
-      <Route path="/salary/deductions" element={<ProtectedRoute><DeductionManagement /></ProtectedRoute>} />
-      <Route path="/salary/compliance" element={<ProtectedRoute><ComplianceReports /></ProtectedRoute>} />
-      <Route path="/salary/audit" element={<ProtectedRoute><SalaryAuditLog /></ProtectedRoute>} />
-      <Route path="/salary/insights" element={<ProtectedRoute><SmartInsights /></ProtectedRoute>} />
+      <Route path="/reports" element={<LockedRoute><Reports /></LockedRoute>} />
+      <Route path="/salary/periods" element={<LockedRoute><PayrollPeriods /></LockedRoute>} />
+      <Route path="/salary/calculation" element={<LockedRoute><SalaryCalculation /></LockedRoute>} />
+      <Route path="/salary/payslips" element={<LockedRoute><Payslips /></LockedRoute>} />
+      <Route path="/salary/payheads" element={<LockedRoute><PayheadConfig /></LockedRoute>} />
+      <Route path="/salary/deductions" element={<LockedRoute><DeductionManagement /></LockedRoute>} />
+      <Route path="/salary/compliance" element={<LockedRoute><ComplianceReports /></LockedRoute>} />
+      <Route path="/salary/audit" element={<LockedRoute><SalaryAuditLog /></LockedRoute>} />
+      <Route path="/salary/insights" element={<LockedRoute><SmartInsights /></LockedRoute>} />
     </Routes>
   )
 }
