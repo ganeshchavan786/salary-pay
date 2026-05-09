@@ -305,76 +305,79 @@
     </div>
 
     <script>
-        // Use relative path for local backend, and proxy path for license server to bypass CORS
         const API_URL = "/api/v1"; 
         const LICENSE_SERVER = "/license-srv";
 
-        window.onload = () => {
+        window.onload = async () => {
             lucide.createIcons();
-            setupLicenseTriggers();
-            
-            // Check if redirecting from a license error
+
             const params = new URLSearchParams(window.location.search);
+
+            // Case 1: Block झाल्यावर redirect → support modal
             if (params.get('contact_support')) {
                 showSupportModal();
-            } else if (params.get('license_required')) {
-                showLicenseModal();
+                return;
             }
+
+            // Case 2: Expired/invalid redirect → check license status
+            if (params.get('license_required')) {
+                await checkAndShowModal();
+                return;
+            }
+
+            // Case 3: Normal page load → portal links directly navigate (no license check)
+            setupPortalLinks();
         };
 
-        function setupLicenseTriggers() {
-            // Get Started Button
+        // Portal links — directly navigate, no license check on click
+        function setupPortalLinks() {
             const getStartedBtn = document.getElementById('get-started-btn');
             if (getStartedBtn) {
                 getStartedBtn.onclick = (e) => {
                     e.preventDefault();
-                    checkLicenseStatus(() => window.location.href = "/admin/");
+                    window.location.href = "/admin/";
                 };
             }
-
-            // Portal Links
+            // Portal links — direct navigation
             document.querySelectorAll('.portal-link').forEach(link => {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    const target = link.getAttribute('href');
-                    checkLicenseStatus(() => window.location.href = target);
-                };
+                link.onclick = null; // Remove any existing handlers
             });
         }
 
-        async function checkLicenseStatus(onSuccess) {
+        // License check — फक्त redirect आल्यावर
+        async function checkAndShowModal() {
             try {
-                const res = await fetch(`${API_URL}/status`);
-                if (res.status === 402) {
-                    showLicenseModal();
-                } else {
-                    onSuccess();
+                const res = await fetch(`${API_URL}/v1/license/info`);
+                const data = await res.json();
+
+                if (data.status === 'NORMAL') {
+                    // License valid — थेट admin ला जा
+                    window.location.href = "/admin/";
+                    return;
                 }
             } catch (err) {
-                console.error("Backend offline:", err);
-                alert("Backend server is not running. Please start it.");
+                // Backend offline — registration दाखवा
             }
+
+            // License नाही किंवा expired — registration दाखवा
+            showLicenseModal();
         }
 
-        async function showSupportModal() {
-            const modal = document.getElementById('support-modal')
-            modal.classList.remove('hidden')
-            lucide.createIcons()
+        function showSupportModal() {
+            document.getElementById('support-modal').classList.remove('hidden');
+            lucide.createIcons();
         }
 
         async function showLicenseModal() {
             const modal = document.getElementById('license-modal');
-            const machineIdInput = document.getElementById('machine_id');
-            
             modal.classList.remove('hidden');
             
-            // मशीन आयडी मिळवा
             try {
                 const res = await fetch(`${API_URL}/license/machine-id`);
                 const data = await res.json();
-                machineIdInput.value = data.machine_id;
+                document.getElementById('machine_id').value = data.machine_id;
             } catch (e) {
-                machineIdInput.value = "Error fetching ID";
+                document.getElementById('machine_id').value = "Error fetching ID";
             }
         }
 
@@ -391,12 +394,11 @@
                 owner_name: document.getElementById('owner_name').value,
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
-                password: "trial-password-123", // Default trial password
+                password: "trial-password-123",
                 machine_id: document.getElementById('machine_id').value
             };
 
             try {
-                // १. लायसन्स सर्व्हरवर रजिस्टर करा
                 const regRes = await fetch(`${LICENSE_SERVER}/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -406,23 +408,19 @@
                 const regData = await regRes.json();
                 
                 if (regRes.ok) {
-                    const licenseKey = regData.license_key;
-                    
-                    // ३. customer_id सेव्ह करा (चेकआउटसाठी लागेल)
                     if (regData.customer_id) {
                         localStorage.setItem('sp_customer_id', regData.customer_id);
                     }
                     
-                    // २. तुमच्या HRMS बॅकएंडला ती की पाठवा (ऑटो-सेव्ह)
                     const actRes = await fetch(`${API_URL}/license/activate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ license_key: licenseKey })
+                        body: JSON.stringify({ license_key: regData.license_key })
                     });
                     
                     if (actRes.ok) {
                         alert("✅ Registration Successful! 7-day trial activated.");
-                        window.location.reload();
+                        window.location.href = "/admin/";
                     } else {
                         alert("Error saving license to backend.");
                     }
@@ -431,7 +429,6 @@
                 }
             } catch (err) {
                 alert("Network error. Make sure both servers are running.");
-                console.error(err);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
