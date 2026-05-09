@@ -331,16 +331,17 @@
 
         // Portal links — directly navigate, no license check on click
         function setupPortalLinks() {
+            // Get Started → नेहमी Registration form दाखवा
             const getStartedBtn = document.getElementById('get-started-btn');
             if (getStartedBtn) {
-                getStartedBtn.onclick = (e) => {
+                getStartedBtn.onclick = async (e) => {
                     e.preventDefault();
-                    window.location.href = "/admin/";
+                    await showLicenseModal();
                 };
             }
-            // Portal links — direct navigation
+            // Portal links (Admin, Employee, Face) → direct navigation
             document.querySelectorAll('.portal-link').forEach(link => {
-                link.onclick = null; // Remove any existing handlers
+                link.onclick = null;
             });
         }
 
