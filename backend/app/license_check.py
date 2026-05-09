@@ -73,6 +73,11 @@ def is_license_valid():
         if response.status_code == 200:
             result = response.json()
             if result.get("valid"):
+                # Expired check करा
+                if result.get("is_expired"):
+                    # Trial/Paid expire झाली → READ_ONLY (basic features only)
+                    save_license_cache(result, license_key)
+                    return STATE_READ_ONLY, "Subscription expired. Please renew."
                 # SERVER SAYS VALID -> Update Cache and return NORMAL
                 save_license_cache(result, license_key)
                 return STATE_NORMAL, "Validated Online"
@@ -80,10 +85,8 @@ def is_license_valid():
                 # SERVER SAYS EXPLICITLY INVALID
                 reason = result.get("reason", "")
                 if result.get("support_required") or reason == "blocked":
-                    # Admin ने block केलं — support contact दाखवायचं
                     return STATE_BLOCKED, "SUPPORT_REQUIRED"
                 else:
-                    # Expired किंवा invalid — basic features दाखवायचं
                     return STATE_READ_ONLY, reason or "License expired."
         
     except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError):

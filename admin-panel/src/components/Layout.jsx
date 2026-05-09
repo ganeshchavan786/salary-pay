@@ -73,7 +73,7 @@ export default function Layout({ children }) {
       
       const wasReadOnly = isReadOnly
       setLicense(data)
-      setIsReadOnly(data.status === 'READ_ONLY')
+      // setIsReadOnly is handled above with early return for BLOCKED
 
       // If we recovered from Read-Only to Normal
       if (wasReadOnly && data.status === 'NORMAL') {
@@ -84,7 +84,10 @@ export default function Layout({ children }) {
       // If server says BLOCKED, hard redirect — support modal दाखवायचं
       if (data.status === 'BLOCKED') {
         window.location.href = '/?contact_support=1'
+        return
       }
+      // READ_ONLY — expire झाली, basic features allow
+      setIsReadOnly(data.status === 'READ_ONLY')
     } catch (err) {
       console.error("License fetch failed")
     }
