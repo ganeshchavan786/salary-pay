@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useLicense } from './context/LicenseContext'
 import Login from './pages/Login'
@@ -45,18 +46,45 @@ function ProtectedRoute({ children }) {
 // Locked route — READ_ONLY असेल तर Upgrade Modal दाखवतो
 function LockedRoute({ children }) {
   const { user, loading } = useAuth()
-  const { isReadOnly, showUpgradeModal } = useLicense()
+  const [licenseStatus, setLicenseStatus] = useState(null)
+  const [checking, setChecking] = useState(true)
 
-  if (loading) return null
+  useEffect(() => {
+    fetch('/api/v1/license/info')
+      .then(r => r.json())
+      .then(d => {
+        setLicenseStatus(d.status)
+        setChecking(false)
+      })
+      .catch(() => {
+        setLicenseStatus('NORMAL')
+        setChecking(false)
+      })
+  }, [])
+
+  if (loading || checking) return null
   if (!user) return <Navigate to="/login" replace />
 
-  if (isReadOnly) {
-    // Upgrade modal trigger करा
-    setTimeout(() => showUpgradeModal(), 50)
-    return <Navigate to="/" replace />
+  if (licenseStatus === 'READ_ONLY') {
+    return (
+      <Layout>
+        <UpgradePrompt />
+      </Layout>
+    )
   }
 
   return <Layout>{children}</Layout>
+}
+
+function UpgradePrompt() {
+  const [show, setShow] = useState(true)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    navigate('/', { replace: true })
+  }, [])
+
+  return null
 }
 
 function AppRoutes() {
