@@ -54,10 +54,12 @@ export default function PayrollPeriods() {
       const parts = form.start_date.split('-')
       if (parts.length === 3) {
         const year = parseInt(parts[0], 10)
-        const monthIdx = parseInt(parts[1], 10) - 1
-        newStart = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`
-        const lastDay = new Date(year, monthIdx + 1, 0).getDate()
-        newEnd = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+        if (year > 1900) {
+          const monthIdx = parseInt(parts[1], 10) - 1
+          newStart = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`
+          const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+          newEnd = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+        }
       }
     }
     setForm({ ...form, period_type: type, start_date: newStart, end_date: newEnd })
@@ -70,10 +72,12 @@ export default function PayrollPeriods() {
       const parts = startDateStr.split('-')
       if (parts.length === 3) {
         const year = parseInt(parts[0], 10)
-        const monthIdx = parseInt(parts[1], 10) - 1
-        newStart = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`
-        const lastDay = new Date(year, monthIdx + 1, 0).getDate()
-        newEnd = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+        if (year > 1900) {
+          const monthIdx = parseInt(parts[1], 10) - 1
+          newStart = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`
+          const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+          newEnd = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+        }
       }
     }
     setForm({ ...form, start_date: newStart, end_date: newEnd })
