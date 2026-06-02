@@ -40,7 +40,12 @@ export default function PayrollPeriods() {
 
   async function createPeriod() {
     try {
-      await api.post('/v1/payroll-periods/', form)
+      const payload = {
+        ...form,
+        start_date: form.start_date ? `${form.start_date}T00:00:00` : '',
+        end_date: form.end_date ? `${form.end_date}T00:00:00` : ''
+      }
+      await api.post('/v1/payroll-periods/', payload)
       toast.success('Period created!')
       setShowCreate(false)
       setForm({ period_name: '', period_type: 'MONTHLY', start_date: '', end_date: '' })
