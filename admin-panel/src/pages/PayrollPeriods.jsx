@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Lock, Play, CheckCircle, Plus, ChevronRight } from 'lucide-react'
+import { Calendar, Lock, Play, CheckCircle, Plus, ChevronRight, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -18,6 +18,24 @@ const NEXT_STATE = {
   PROCESSED: 'LOCKED',
 }
 
+function formatDateReadable(dateStr) {
+  if (!dateStr) return '—'
+  const cleanDate = dateStr.split('T')[0]
+  const parts = cleanDate.split('-')
+  if (parts.length !== 3) {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+    const day = String(date.getDate()).padStart(2, '0')
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${day}/${months[date.getMonth()]}/${date.getFullYear()}`
+  }
+  const year = parts[0]
+  const monthIdx = parseInt(parts[1], 10) - 1
+  const day = parts[2]
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${day}/${months[monthIdx]}/${year}`
+}
+
 export default function PayrollPeriods() {
   const [periods, setPeriods] = useState([])
   const [loading, setLoading] = useState(false)
@@ -28,6 +46,38 @@ export default function PayrollPeriods() {
   })
 
   useEffect(() => { fetchPeriods() }, [])
+
+  const handlePeriodTypeChange = (type) => {
+    let newStart = form.start_date
+    let newEnd = form.end_date
+    if (type === 'MONTHLY' && form.start_date) {
+      const parts = form.start_date.split('-')
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10)
+        const monthIdx = parseInt(parts[1], 10) - 1
+        newStart = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`
+        const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+        newEnd = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      }
+    }
+    setForm({ ...form, period_type: type, start_date: newStart, end_date: newEnd })
+  }
+
+  const handleStartDateChange = (startDateStr) => {
+    let newStart = startDateStr
+    let newEnd = form.end_date
+    if (form.period_type === 'MONTHLY' && startDateStr) {
+      const parts = startDateStr.split('-')
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10)
+        const monthIdx = parseInt(parts[1], 10) - 1
+        newStart = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`
+        const lastDay = new Date(year, monthIdx + 1, 0).getDate()
+        newEnd = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      }
+    }
+    setForm({ ...form, start_date: newStart, end_date: newEnd })
+  }
 
   async function fetchPeriods() {
     setLoading(true)
@@ -65,6 +115,17 @@ export default function PayrollPeriods() {
     }
   }
 
+  async function deletePeriod(id) {
+    if (!confirm('Are you sure you want to delete this payroll period? This will also delete all associated calculations.')) return
+    try {
+      await api.delete(`/v1/payroll-periods/${id}`)
+      toast.success('Period deleted successfully')
+      fetchPeriods()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to delete period')
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -95,7 +156,7 @@ export default function PayrollPeriods() {
                 <div>
                   <h3 className="font-semibold text-gray-800">{p.period_name}</h3>
                   <p className="text-sm text-gray-500">
-                    {new Date(p.start_date).toLocaleDateString()} – {new Date(p.end_date).toLocaleDateString()}
+                    {formatDateReadable(p.start_date)} – {formatDateReadable(p.end_date)}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {p.processed_employees ?? 0}/{p.total_employees ?? 0} employees processed · {p.period_type}
@@ -115,6 +176,15 @@ export default function PayrollPeriods() {
                       ? <><Lock className="w-4 h-4" /> Lock</>
                       : <><ChevronRight className="w-4 h-4" /> {NEXT_STATE[p.state]}</>
                     }
+                  </button>
+                )}
+                {p.state !== 'LOCKED' && (
+                  <button
+                    onClick={() => deletePeriod(p.id)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Delete Period"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -150,7 +220,7 @@ export default function PayrollPeriods() {
                 <select
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={form.period_type}
-                  onChange={e => setForm({ ...form, period_type: e.target.value })}
+                  onChange={e => handlePeriodTypeChange(e.target.value)}
                 >
                   <option value="MONTHLY">Monthly</option>
                   <option value="WEEKLY">Weekly</option>
@@ -163,16 +233,17 @@ export default function PayrollPeriods() {
                   type="date"
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={form.start_date}
-                  onChange={e => setForm({ ...form, start_date: e.target.value })}
+                  onChange={e => handleStartDateChange(e.target.value)}
                 />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">End Date</label>
                 <input
                   type="date"
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
                   value={form.end_date}
                   onChange={e => setForm({ ...form, end_date: e.target.value })}
+                  disabled={form.period_type === 'MONTHLY'}
                 />
               </div>
             </div>

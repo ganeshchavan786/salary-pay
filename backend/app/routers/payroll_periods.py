@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, delete
 from typing import List, Optional
 from datetime import datetime
 
@@ -185,3 +185,56 @@ async def lock_period(
     await db.commit()
     await db.refresh(period)
     return PayrollPeriodResponse.model_validate(period)
+
+
+@router.delete("/{period_id}", status_code=status.HTTP_200_OK)
+async def delete_payroll_period(
+    period_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a payroll period and its associated records if it is not locked/approved."""
+    result = await db.execute(select(PayrollPeriod).where(PayrollPeriod.id == period_id))
+    period = result.scalar_one_or_none()
+    if not period:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payroll period not found.")
+
+    if period.state == PayrollPeriodState.LOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete a locked payroll period.",
+        )
+
+    # Check if any associated salary calculations are APPROVED or PAID
+    from app.models.salary_calculation import SalaryCalculation, SalaryCalculationStatus
+    calcs_stmt = select(SalaryCalculation).where(
+        and_(
+            SalaryCalculation.period_id == period_id,
+            or_(
+                SalaryCalculation.status == SalaryCalculationStatus.APPROVED,
+                SalaryCalculation.status == SalaryCalculationStatus.PAID
+            )
+        )
+    )
+    calcs_result = await db.execute(calcs_stmt)
+    approved_calcs = calcs_result.scalars().all()
+    if approved_calcs:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete payroll period: some salary calculations are already approved or paid.",
+        )
+
+    # Cascade delete associated records
+    from app.models.installment_record import InstallmentRecord
+    from app.models.arrear import Arrear
+    from app.models.compliance_report import ComplianceReport
+
+    await db.execute(delete(InstallmentRecord).where(InstallmentRecord.period_id == period_id))
+    await db.execute(delete(Arrear).where(Arrear.period_id == period_id))
+    await db.execute(delete(ComplianceReport).where(ComplianceReport.period_id == period_id))
+    await db.execute(delete(SalaryCalculation).where(SalaryCalculation.period_id == period_id))
+
+    await db.delete(period)
+    await db.commit()
+
+    return {"message": "Payroll period and associated calculations deleted successfully."}
