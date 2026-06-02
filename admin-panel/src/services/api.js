@@ -50,6 +50,25 @@ api.interceptors.response.use(
     return response
   },
   async (error) => {
+    // Sanitize Pydantic validation errors globally to prevent React rendering crashes
+    if (error.response?.data?.detail) {
+      const detail = error.response.data.detail
+      if (Array.isArray(detail)) {
+        const firstError = detail[0]
+        if (firstError && typeof firstError === 'object') {
+          const loc = firstError.loc ? firstError.loc.join(' → ') : ''
+          const msg = firstError.msg || 'Validation error'
+          error.response.data.detail = loc ? `${loc}: ${msg}` : msg
+        } else {
+          error.response.data.detail = 'Invalid request data'
+        }
+      } else if (typeof detail === 'object') {
+        const loc = detail.loc ? detail.loc.join(' → ') : ''
+        const msg = detail.msg || 'Validation error'
+        error.response.data.detail = loc ? `${loc}: ${msg}` : msg
+      }
+    }
+
     const originalRequest = error.config
 
     // Log errors for debugging
