@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 import logging
+import calendar
 
 from app.database import get_db
+from app.models.salary_config import SalaryConfig
 from app.models.salary_calculation import SalaryCalculation, SalaryCalculationStatus
 from app.models.payroll_period import PayrollPeriod, PayrollPeriodState
 from app.models.employee import Employee
@@ -279,3 +281,90 @@ async def approve_calculation(
     await db.refresh(calc)
 
     return SalaryCalculationResponse.model_validate(calc)
+
+
+@router.get("/live-preview", status_code=status.HTTP_200_OK)
+async def get_live_payroll_preview(
+    month: Optional[int] = Query(None, ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2020, le=2100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate in-memory real-time salary preview for all active employees based on current MTD attendance."""
+    now = datetime.utcnow()
+    current_year = now.year
+    current_month = now.month
+    current_day = now.day
+
+    # Default to current month/year if not provided
+    if not year:
+        year = current_year
+    if not month:
+        month = current_month
+
+    start_date = date(year, month, 1)
+    
+    # Calculate end day of the month
+    _, last_day = calendar.monthrange(year, month)
+    
+    if year == current_year and month == current_month:
+        end_date = date(year, month, current_day)
+    else:
+        end_date = date(year, month, last_day)
+
+    # Fetch active employees and their active configs
+    result = await db.execute(
+        select(Employee, SalaryConfig)
+        .outerjoin(SalaryConfig, and_(SalaryConfig.employee_id == Employee.id, SalaryConfig.status == "active"))
+        .where(Employee.status == "ACTIVE")
+    )
+    rows = result.all()
+
+    previews = []
+    for employee, config in rows:
+        if not config:
+            previews.append({
+                "employee_id": employee.id,
+                "emp_name": employee.name,
+                "emp_code": employee.emp_code,
+                "present_days": 0,
+                "absent_days": 0,
+                "leave_days": 0,
+                "working_days": 0,
+                "ot_hours": 0.0,
+                "gross_salary": 0.0,
+                "total_deductions": 0.0,
+                "net_salary": 0.0,
+                "status": "NO_CONFIG"
+            })
+            continue
+
+        calc_dict = await salary_calculator.calculate_live_preview(
+            employee_id=employee.id,
+            start_date=start_date,
+            end_date=end_date,
+            db=db
+        )
+        if "error" in calc_dict:
+            previews.append({
+                "employee_id": employee.id,
+                "emp_name": employee.name,
+                "emp_code": employee.emp_code,
+                "present_days": 0,
+                "absent_days": 0,
+                "leave_days": 0,
+                "working_days": 0,
+                "ot_hours": 0.0,
+                "gross_salary": 0.0,
+                "total_deductions": 0.0,
+                "net_salary": 0.0,
+                "status": "ERROR",
+                "error_details": calc_dict["error"]
+            })
+            continue
+
+        calc_dict["emp_name"] = employee.name
+        calc_dict["emp_code"] = employee.emp_code
+        previews.append(calc_dict)
+
+    return previews

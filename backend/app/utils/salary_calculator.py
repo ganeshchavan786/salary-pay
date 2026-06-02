@@ -2,7 +2,7 @@ import logging
 import uuid
 from decimal import Decimal
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import date, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
@@ -384,6 +384,166 @@ class SalaryCalculator:
             ).order_by(SalaryConfig.effective_date.desc())
         )
         return result.scalar_one_or_none()
+
+    async def calculate_live_preview(
+        self,
+        employee_id: str,
+        start_date: date,
+        end_date: date,
+        db: AsyncSession,
+    ) -> Dict:
+        """
+        Calculate in-memory accrued salary for one employee for a given date range.
+        Does not commit or modify any database state.
+        """
+        # 1. Get salary config
+        config = await self._get_salary_config(employee_id, db)
+        if not config:
+            return {"error": "No active salary config"}
+
+        # 2. Fetch real attendance data from Attendance Service
+        attendance_data = await attendance_service.get_employee_attendance_summary(
+            db=db,
+            employee_id=employee_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        basic = Decimal(str(config.basic_salary))
+        hra_pct = Decimal(str(config.hra_percentage))
+
+        # Get attendance values
+        present_days = attendance_data.get("present_days", 0)
+        working_days = attendance_data.get("working_days", 26)
+        if working_days <= 0:
+            working_days = 26
+
+        if present_days == 0:
+            # Zero attendance: calculate full gross components, LOP will deduct
+            pro_rata_factor = Decimal("1")
+            basic_earned = basic.quantize(Decimal("0.01"))
+            special_allowance = Decimal(str(config.special_allowance)).quantize(Decimal("0.01"))
+            travel_allowance = Decimal(str(config.travel_allowance)).quantize(Decimal("0.01"))
+            medical_allowance = Decimal(str(config.medical_allowance)).quantize(Decimal("0.01"))
+        else:
+            # Partial or full attendance: apply pro-rata
+            pro_rata_factor = Decimal(str(present_days)) / Decimal(str(working_days))
+            basic_earned = (basic * pro_rata_factor).quantize(Decimal("0.01"))
+            special_allowance = (Decimal(str(config.special_allowance)) * pro_rata_factor).quantize(Decimal("0.01"))
+            travel_allowance = (Decimal(str(config.travel_allowance)) * pro_rata_factor).quantize(Decimal("0.01"))
+            medical_allowance = (Decimal(str(config.medical_allowance)) * pro_rata_factor).quantize(Decimal("0.01"))
+
+        # Calculate HRA & OT using formula engine
+        context = {
+            "BASIC": float(basic_earned),
+            "FULL_BASIC": float(basic),
+            "HRA_PERCENT": float(hra_pct),
+            "GROSS": 0,
+            "OT_HOURS": float(attendance_data.get("overtime_hours", 0)),
+            "SHIFT_HOURS": 8.0,
+            "OT_MULTIPLIER": 2.0,
+        }
+        formula_results = formula_engine.calculate_all(context)
+        hra_earned = formula_results.get("HRA", Decimal("0"))
+        ot_amount = formula_results.get("OT_AMOUNT", Decimal("0"))
+
+        # Custom payheads
+        custom_payheads_total = Decimal("0")
+        custom_payheads_breakdown = []
+        for ph in (config.custom_payheads or []):
+            if isinstance(ph, dict):
+                name = ph.get("name", "Custom Payhead")
+                amount = Decimal(str(ph.get("amount", 0)))
+                is_pct = ph.get("is_percentage_of_basic", False)
+            else:
+                name = ph.name
+                amount = Decimal(str(ph.amount))
+                is_pct = ph.is_percentage_of_basic
+                
+            if is_pct:
+                calculated_amt = (basic_earned * amount / Decimal("100")).quantize(Decimal("0.01"))
+            else:
+                calculated_amt = amount.quantize(Decimal("0.01"))
+                
+            if calculated_amt > 0:
+                custom_payheads_total += calculated_amt
+                custom_payheads_breakdown.append({"name": name, "amount": str(calculated_amt)})
+
+        # Arrears - for preview we don't have period, so default to 0
+        arrears_amount = Decimal("0")
+
+        gross_salary = (
+            basic_earned + hra_earned + special_allowance
+            + travel_allowance + medical_allowance + ot_amount
+            + custom_payheads_total + arrears_amount
+        )
+
+        # Dynamic statutory rates
+        pf_rate = await self._resolve_rate(DeductionRateType.PF_EMPLOYEE, db)
+        esi_rate = await self._resolve_rate(DeductionRateType.ESI_EMPLOYEE, db)
+
+        pf_data = tax_calculator.calculate_pf(basic_earned, employee_rate=pf_rate) if config.pf_applicable else {}
+        esi_data = tax_calculator.calculate_esi(gross_salary, employee_rate=esi_rate) if config.esi_applicable else {}
+        pt = tax_calculator.calculate_professional_tax(gross_salary) if config.pt_applicable else Decimal("0")
+
+        # LOP deduction
+        absent_days_count = attendance_data.get("absent_days", 0)
+        halfday_count = attendance_data.get("halfday_count", 0)
+        lop_days = Decimal(str(absent_days_count)) + (Decimal(str(halfday_count)) * Decimal("0.5"))
+        
+        lop_deduction = (
+            (basic / Decimal(str(working_days)) * lop_days).quantize(Decimal("0.01"))
+            if lop_days > 0
+            else Decimal("0")
+        )
+
+        statutory = {
+            "pf_employee": pf_data.get("employee_pf", Decimal("0")),
+            "esi_employee": esi_data.get("employee_esi", Decimal("0")),
+            "professional_tax": pt,
+            "income_tax": Decimal("0"),
+        }
+
+        # Apply active voluntary deductions without changing balances in DB
+        deductions_result = await db.execute(
+            select(Deduction).where(
+                and_(
+                    Deduction.employee_id == employee_id,
+                    Deduction.status == DeductionStatus.ACTIVE,
+                )
+            )
+        )
+        active_deductions = deductions_result.scalars().all()
+
+        voluntary_deductions = []
+        for ded in active_deductions:
+            amount = min(
+                Decimal(str(ded.emi_amount)) if ded.emi_amount else Decimal(str(ded.remaining)),
+                Decimal(str(ded.remaining)),
+            )
+            voluntary_deductions.append({
+                "type": ded.deduction_type.value,
+                "amount": float(amount),
+            })
+
+        deduction_result = deduction_engine.apply_deductions(gross_salary, statutory, voluntary_deductions)
+
+        total_deductions = deduction_result["total_deductions"] + lop_deduction
+        net_salary = deduction_result["net_salary"] - lop_deduction
+
+        return {
+            "employee_id": employee_id,
+            "present_days": present_days,
+            "absent_days": absent_days_count,
+            "leave_days": attendance_data.get("leave_days", 0),
+            "working_days": working_days,
+            "ot_hours": float(attendance_data.get("overtime_hours", 0)),
+            "gross_salary": float(gross_salary),
+            "lop_deduction": float(lop_deduction),
+            "total_deductions": float(total_deductions),
+            "net_salary": float(net_salary),
+            "status": "LIVE"
+        }
 
 
 salary_calculator = SalaryCalculator()

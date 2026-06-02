@@ -23,6 +23,7 @@ import ComplianceReports from './pages/ComplianceReports'
 import SalaryAuditLog from './pages/SalaryAuditLog'
 import SmartInsights from './pages/SmartInsights'
 import Payslips from './pages/Payslips'
+import RealTimeSalaryTracker from './pages/RealTimeSalaryTracker'
 import Layout from './components/Layout'
 
 function ProtectedRoute({ children }) {
@@ -104,6 +105,7 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/reports" element={<LockedRoute><Reports /></LockedRoute>} />
       <Route path="/salary/periods" element={<LockedRoute><PayrollPeriods /></LockedRoute>} />
+      <Route path="/salary/realtime" element={<LockedRoute><RealTimeSalaryTracker /></LockedRoute>} />
       <Route path="/salary/calculation" element={<LockedRoute><SalaryCalculation /></LockedRoute>} />
       <Route path="/salary/payslips" element={<LockedRoute><Payslips /></LockedRoute>} />
       <Route path="/salary/payheads" element={<LockedRoute><PayheadConfig /></LockedRoute>} />

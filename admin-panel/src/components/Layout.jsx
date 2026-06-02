@@ -46,6 +46,7 @@ const navItems = [
 
 const salaryNavItems = [
   { path: '/salary/periods',     label: 'Payroll Periods',    icon: Calendar,          color: 'text-blue-500' },
+  { path: '/salary/realtime',    label: 'Real-time Tracker',  icon: Zap,               color: 'text-amber-500' },
   { path: '/salary/calculation', label: 'Salary Calculation', icon: Calculator,        color: 'text-green-500' },
   { path: '/salary/payslips',    label: 'Payslips',           icon: FileText,          color: 'text-indigo-500' },
   { path: '/salary/payheads',    label: 'Payhead Config',     icon: SlidersHorizontal, color: 'text-purple-500' },

@@ -377,6 +377,7 @@ export const salaryCalculationApi = {
   calculateAll: (periodId, employeeIds = null) => 
     api.post(`/v1/payroll/calculate/${periodId}`, employeeIds ? { employee_ids: employeeIds } : {}),
   approve: (calcId) => api.patch(`/v1/payroll/calculation/${calcId}/approve`),
+  getLivePreview: (params) => api.get('/v1/payroll/live-preview', { params }),
 }
 
 export const salaryAuditApi = {
