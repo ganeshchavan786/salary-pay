@@ -35,16 +35,16 @@ vi.mock('../../services/api', () => ({
           ]
         })
       }
-      if (url.includes('salary-calculations')) {
+      if (url.includes('/payroll/period/')) {
         return Promise.resolve({
           data: [
             {
-              id: 'c1', emp_name: 'Rahul Sharma', emp_code: 'EMP001',
+              id: 'c1', employee_id: 'emp1', emp_name: 'Rahul Sharma', emp_code: 'EMP001',
               gross_salary: 47000, total_deductions: 2000, net_salary: 45000,
               status: 'CALCULATED',
             },
             {
-              id: 'c2', emp_name: 'Priya Patel', emp_code: 'EMP002',
+              id: 'c2', employee_id: 'emp2', emp_name: 'Priya Patel', emp_code: 'EMP002',
               gross_salary: 35000, total_deductions: 1800, net_salary: 33200,
               status: 'APPROVED',
             },
@@ -54,10 +54,20 @@ vi.mock('../../services/api', () => ({
       return Promise.resolve({ data: [] })
     }),
     post: vi.fn(() => Promise.resolve({
-      data: { processed: 2, errors: 0 }
+      data: { total_processed: 2, total_errors: 0 }
     })),
     patch: vi.fn(() => Promise.resolve({ data: {} })),
   },
+  employeeApi: {
+    getAll: vi.fn(() => Promise.resolve({
+      data: {
+        employees: [
+          { id: 'emp1', name: 'Rahul Sharma', emp_code: 'EMP001', status: 'ACTIVE' },
+          { id: 'emp2', name: 'Priya Patel', emp_code: 'EMP002', status: 'ACTIVE' },
+        ]
+      }
+    }))
+  }
 }))
 
 import SalaryCalculation from '../../pages/SalaryCalculation'

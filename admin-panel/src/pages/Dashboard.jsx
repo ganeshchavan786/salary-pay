@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Users, UserCheck, UserX, CalendarCheck, Clock, Umbrella, Star, ArrowRight, CheckCircle, XCircle } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Users, UserCheck, UserX, CalendarCheck, Clock, Umbrella, Star, ArrowRight, CheckCircle, XCircle, Lock } from 'lucide-react'
 import { employeeApi, attendanceApi, dashboardApi, leaveApi } from '../services/api'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { useLicense } from '../context/LicenseContext'
 
 const STATUS_COLORS = {
   present: 'bg-green-100 text-green-700',
@@ -26,6 +27,8 @@ export default function Dashboard() {
   const [todayAttendance, setTodayAttendance] = useState([])
   const [pendingLeaves, setPendingLeaves] = useState([])
   const [loading, setLoading] = useState(true)
+  const { isReadOnly, showUpgradeModal } = useLicense()
+  const navigate = useNavigate()
 
   useEffect(() => {
     loadDashboardData()
@@ -258,14 +261,25 @@ export default function Dashboard() {
         <h2 className="font-semibold text-gray-800 mb-3">⚡ Quick Actions</h2>
         <div className="flex gap-3 flex-wrap">
           {[
-            { label: '+ Add Employee', to: '/employees', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-            { label: 'Run Payroll', to: '/payroll', color: 'bg-green-50 text-green-700 border-green-200' },
-            { label: 'View Attendance', to: '/attendance', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-            { label: 'Manage Leaves', to: '/leaves', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+            { label: '+ Add Employee', to: '/employees', locked: false, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+            { label: 'Run Payroll', to: '/salary/calculation', locked: true, color: 'bg-green-50 text-green-700 border-green-200' },
+            { label: 'View Attendance', to: '/attendance', locked: false, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+            { label: 'Manage Leaves', to: '/leaves', locked: true, color: 'bg-orange-50 text-orange-700 border-orange-200' },
           ].map((a, i) => (
-            <Link key={i} to={a.to} className={`px-4 py-2 rounded-lg text-sm font-medium border ${a.color} hover:opacity-80`}>
-              {a.label}
-            </Link>
+            isReadOnly && a.locked ? (
+              <button
+                key={i}
+                onClick={showUpgradeModal}
+                className={`px-4 py-2 rounded-lg text-sm font-medium border ${a.color} hover:opacity-80 flex items-center gap-1.5 opacity-60`}
+              >
+                <Lock className="w-3 h-3" />
+                {a.label}
+              </button>
+            ) : (
+              <Link key={i} to={a.to} className={`px-4 py-2 rounded-lg text-sm font-medium border ${a.color} hover:opacity-80`}>
+                {a.label}
+              </Link>
+            )
           ))}
         </div>
       </div>

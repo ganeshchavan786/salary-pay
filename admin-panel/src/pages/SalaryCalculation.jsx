@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Play, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
-import { api } from '../services/api'
+import { api, employeeApi } from '../services/api'
 import toast from 'react-hot-toast'
 
 const STATUS_COLORS = {
-  PENDING: 'bg-gray-100 text-gray-600',
+  PENDING: 'bg-gray-100 text-gray-500',
   CALCULATED: 'bg-blue-100 text-blue-700',
   APPROVED: 'bg-green-100 text-green-700',
   REJECTED: 'bg-red-100 text-red-700',
@@ -29,6 +29,8 @@ export default function SalaryCalculation() {
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState('')
   const [calculations, setCalculations] = useState([])
+  const [activeEmployees, setActiveEmployees] = useState([])
+  const [selectedEmpIds, setSelectedEmpIds] = useState([])
   const [loading, setLoading] = useState(false)
   const [calculating, setCalculating] = useState(false)
 
@@ -54,10 +56,15 @@ export default function SalaryCalculation() {
   async function fetchCalculations() {
     setLoading(true)
     try {
-      const r = await api.get(`/v1/payroll/period/${selectedPeriod}`)
-      setCalculations(r.data || [])
+      const [calcRes, empRes] = await Promise.all([
+        api.get(`/v1/payroll/period/${selectedPeriod}`),
+        employeeApi.getAll({ status: 'ACTIVE', limit: 500 })
+      ])
+      setCalculations(calcRes.data || [])
+      setActiveEmployees(empRes.data?.employees || [])
+      setSelectedEmpIds([]) // Reset selection on period change
     } catch (err) {
-      console.error('Failed to load calculations:', err)
+      console.error('Failed to load calculations or active employees:', err)
       if (err.response?.status === 401) {
         toast.error('Session expired. Please log in again.')
       } else if (err.response?.status === 422) {
@@ -72,11 +79,17 @@ export default function SalaryCalculation() {
 
   async function calculateAll() {
     if (!selectedPeriod) return toast.error('Select a period first')
-    if (!confirm('Run salary calculation for all employees in this period?')) return
+    
+    const isSelective = selectedEmpIds.length > 0
+    const confirmMessage = isSelective 
+      ? `Run salary calculation for the ${selectedEmpIds.length} selected employee(s) in this period?`
+      : 'Run salary calculation for all employees in this period?'
+
+    if (!confirm(confirmMessage)) return
     setCalculating(true)
     try {
-      // Send empty object as body (required by backend)
-      const r = await api.post(`/v1/payroll/calculate/${selectedPeriod}`, {})
+      const payload = isSelective ? { employee_ids: selectedEmpIds } : {}
+      const r = await api.post(`/v1/payroll/calculate/${selectedPeriod}`, payload)
       const processed = r.data?.total_processed ?? 0
       const errors = r.data?.total_errors ?? 0
       if (errors > 0) {
@@ -84,6 +97,7 @@ export default function SalaryCalculation() {
       } else {
         toast.success(`Calculation complete — ${processed} processed`)
       }
+      setSelectedEmpIds([]) // Reset selection
       fetchCalculations()
     } catch (err) {
       console.error('Calculation failed:', err)
@@ -97,7 +111,6 @@ export default function SalaryCalculation() {
         // Handle Pydantic validation errors
         const detail = err.response?.data?.detail
         if (Array.isArray(detail)) {
-          // Pydantic validation error array
           const firstError = detail[0]
           if (firstError && typeof firstError === 'object') {
             const loc = firstError.loc ? firstError.loc.join(' → ') : ''
@@ -109,7 +122,6 @@ export default function SalaryCalculation() {
         } else if (typeof detail === 'string') {
           errorMessage = detail
         } else if (detail && typeof detail === 'object') {
-          // Single validation error object
           const loc = detail.loc ? detail.loc.join(' → ') : ''
           const msg = detail.msg || 'Validation error'
           errorMessage = loc ? `${loc}: ${msg}` : msg
@@ -171,10 +183,50 @@ export default function SalaryCalculation() {
     }
   }
 
+  // Merge active employees with calculations
+  const mergedCalculations = activeEmployees.map(emp => {
+    const calc = calculations.find(c => c.employee_id === emp.id || c.emp_code === emp.emp_code)
+    if (calc) {
+      return {
+        ...calc,
+        emp_name: calc.emp_name || emp.name,
+        emp_code: calc.emp_code || emp.emp_code,
+        employee_id: emp.id
+      }
+    }
+    return {
+      id: `pending-${emp.id}`,
+      employee_id: emp.id,
+      emp_name: emp.name,
+      emp_code: emp.emp_code,
+      present_days: 0,
+      absent_days: 0,
+      leave_days: 0,
+      overtime_hours: 0,
+      gross_salary: 0,
+      total_deductions: 0,
+      net_salary: 0,
+      status: 'PENDING'
+    }
+  })
+
+  // Append any calculations that don't match active employees (fallback)
+  calculations.forEach(calc => {
+    if (!mergedCalculations.some(m => m.employee_id === calc.employee_id || m.emp_code === calc.emp_code)) {
+      mergedCalculations.push({
+        ...calc,
+        employee_id: calc.employee_id || calc.id
+      })
+    }
+  })
+
   // Safe calculation with null checks and default values
   const totalGross = calculations.reduce((s, c) => s + (Number(c?.gross_salary) || 0), 0)
   const totalNet = calculations.reduce((s, c) => s + (Number(c?.net_salary || c?.net_pay) || 0), 0)
   const totalDeductions = calculations.reduce((s, c) => s + (Number(c?.total_deductions) || 0), 0)
+
+  // Determine checkable row list (employees who are not APPROVED)
+  const checkableCalculations = mergedCalculations.filter(c => c.status !== 'APPROVED')
 
   return (
     <div>
@@ -211,7 +263,11 @@ export default function SalaryCalculation() {
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
             >
               <Play className="w-4 h-4" />
-              {calculating ? 'Calculating...' : 'Calculate All'}
+              {calculating 
+                ? 'Calculating...' 
+                : selectedEmpIds.length > 0 
+                  ? `Calculate Selected (${selectedEmpIds.length})` 
+                  : 'Calculate All'}
             </button>
           </div>
         </div>
@@ -245,14 +301,15 @@ export default function SalaryCalculation() {
       <div className="bg-white rounded-xl shadow">
         <div className="p-4 border-b">
           <h2 className="font-semibold text-gray-800">
-            Calculation Results — {calculations.length} employees
+            Calculation Results — {mergedCalculations.length} employees
           </h2>
         </div>
+
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
-        ) : calculations.length === 0 ? (
+        ) : mergedCalculations.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <p>No calculations yet for this period</p>
@@ -263,6 +320,23 @@ export default function SalaryCalculation() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
+                  <th className="px-4 py-3 text-center w-12">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={
+                        checkableCalculations.length > 0 &&
+                        checkableCalculations.every(c => selectedEmpIds.includes(c.employee_id))
+                      }
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedEmpIds(checkableCalculations.map(c => c.employee_id))
+                        } else {
+                          setSelectedEmpIds([])
+                        }
+                      }}
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left">Employee</th>
                   <th className="px-4 py-3 text-right">Present Days</th>
                   <th className="px-4 py-3 text-right">Absent Days</th>
@@ -276,7 +350,7 @@ export default function SalaryCalculation() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {calculations.map(c => {
+                {mergedCalculations.map(c => {
                   const presentDays = c?.present_days ?? 0
                   const absentDays = c?.absent_days ?? 0
                   const leaveDays = c?.leave_days ?? 0
@@ -284,9 +358,26 @@ export default function SalaryCalculation() {
                   const grossSalary = Number(c?.gross_salary) || 0
                   const totalDeductions = Number(c?.total_deductions) || 0
                   const netSalary = Number(c?.net_salary || c?.net_pay) || 0
+                  const isApproved = c?.status === 'APPROVED'
+                  const isPending = c?.status === 'PENDING'
                   
                   return (
                     <tr key={c?.id || Math.random()} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-30"
+                          disabled={isApproved}
+                          checked={selectedEmpIds.includes(c.employee_id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedEmpIds(prev => [...prev, c.employee_id])
+                            } else {
+                              setSelectedEmpIds(prev => prev.filter(id => id !== c.employee_id))
+                            }
+                          }}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center">
                           <div>
@@ -323,13 +414,19 @@ export default function SalaryCalculation() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {c?.status !== 'APPROVED' && (
+                        {!isApproved && !isPending && (
                           <button
                             onClick={() => approveCalculation(c?.id)}
                             className="flex items-center gap-1 mx-auto text-xs text-green-600 hover:text-green-800 font-medium"
                           >
                             <CheckCircle className="w-4 h-4" /> Approve
                           </button>
+                        )}
+                        {isPending && (
+                          <span className="text-xs text-gray-400">Not calculated</span>
+                        )}
+                        {isApproved && (
+                          <span className="text-xs text-green-600 font-medium">✓ Locked</span>
                         )}
                       </td>
                     </tr>

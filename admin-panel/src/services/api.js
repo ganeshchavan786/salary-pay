@@ -374,7 +374,8 @@ export const salaryConfigApi = {
 
 export const salaryCalculationApi = {
   getByPeriod: (periodId) => api.get(`/v1/payroll/period/${periodId}`),
-  calculateAll: (periodId) => api.post(`/v1/payroll/calculate/${periodId}`),
+  calculateAll: (periodId, employeeIds = null) => 
+    api.post(`/v1/payroll/calculate/${periodId}`, employeeIds ? { employee_ids: employeeIds } : {}),
   approve: (calcId) => api.patch(`/v1/payroll/calculation/${calcId}/approve`),
 }
 
