@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, extract
 from typing import Any, Dict, List
 
 from app.database import get_db
@@ -8,8 +8,38 @@ from app.models.salary_calculation import SalaryCalculation, SalaryCalculationSt
 from app.models.payroll_period import PayrollPeriod
 from app.models.employee import Employee
 from app.models.user import User
+from app.models.attendance_daily import AttendanceDaily
 from app.utils.deps import get_current_user, require_admin
 from app.utils.payslip_generator import payslip_generator
+
+
+async def _fetch_attendance_records(emp_id: str, month: int, year: int, db: AsyncSession) -> list:
+    """Fetch daily attendance records for an employee for a given month/year."""
+    try:
+        att_result = await db.execute(
+            select(AttendanceDaily)
+            .where(
+                AttendanceDaily.emp_id == emp_id,
+                extract('month', AttendanceDaily.date) == month,
+                extract('year',  AttendanceDaily.date) == year,
+            )
+            .order_by(AttendanceDaily.date)
+        )
+        records = att_result.scalars().all()
+        return [
+            {
+                "date":       str(r.date),
+                "check_in":   r.check_in.strftime("%I:%M %p")  if r.check_in  else "-",
+                "check_out":  r.check_out.strftime("%I:%M %p") if r.check_out else "-",
+                "status":     r.status.value if r.status else "-",
+                "is_late":    bool(r.is_late_mark),
+                "work_hours": round(float(r.total_working_hours or 0), 2),
+                "ot_hours":   round(float(r.ot_hours or 0), 2),
+            }
+            for r in records
+        ]
+    except Exception:
+        return []
 
 router = APIRouter(tags=["Payslips"])
 
@@ -266,9 +296,20 @@ async def download_my_slip(
         "present_days": salary_calc_dict.get("present_days", 30),
         "absent_days": salary_calc_dict.get("absent_days", 0),
         "leave_days": salary_calc_dict.get("leave_days", 0),
-        "lop_days": float(salary_calc_dict.get("calculation_details", {}).get("lop_days") or 0.0),
+        # LOP fix: use calculation_details first, fallback to absent_days
+        "lop_days": float(
+            salary_calc_dict.get("calculation_details", {}).get("lop_days")
+            or salary_calc_dict.get("absent_days")
+            or 0.0
+        ),
         "earnings": payslip_data.get("earnings", []),
         "deductions": payslip_data.get("deductions", []),
+        "attendance_records": await _fetch_attendance_records(
+            employee.id,
+            period.start_date.month,
+            period.start_date.year,
+            db,
+        ),
     }
     
     from fastapi import Response
@@ -338,9 +379,20 @@ async def admin_download_slip(
             "present_days": salary_calc_dict.get("present_days", 30),
             "absent_days": salary_calc_dict.get("absent_days", 0),
             "leave_days": salary_calc_dict.get("leave_days", 0),
-            "lop_days": float(salary_calc_dict.get("calculation_details", {}).get("lop_days") or 0.0),
+            # LOP fix: use calculation_details first, fallback to absent_days
+            "lop_days": float(
+                salary_calc_dict.get("calculation_details", {}).get("lop_days")
+                or salary_calc_dict.get("absent_days")
+                or 0.0
+            ),
             "earnings": payslip_data.get("earnings", []),
             "deductions": payslip_data.get("deductions", []),
+            "attendance_records": await _fetch_attendance_records(
+                employee.id,
+                period.start_date.month,
+                period.start_date.year,
+                db,
+            ),
         }
         
         from fastapi import Response
