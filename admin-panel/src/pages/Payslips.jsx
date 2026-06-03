@@ -467,14 +467,14 @@ export default function Payslips() {
 
                   {/* Attendance Summary Box */}
                   <div className="mt-4 border border-slate-300 rounded-lg px-4 py-2">
-                    <div className="flex justify-between text-[11px] text-slate-700 font-semibold mb-1">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] text-slate-700 font-semibold">
                       <span>☐ Total Days: {selectedPayslip.total_days || selectedPayslip.working_days || 30}</span>
                       <span>☐ Working: {selectedPayslip.working_days || 30}</span>
                       <span>☐ Present: {selectedPayslip.present_days || 0}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px] text-slate-700 font-semibold">
+                      <span>☐ Leaves: {selectedPayslip.leave_days || selectedPayslip.leave_count || 0}</span>
                       <span>☐ Absent: {selectedPayslip.absent_days || 0}</span>
                       <span>☐ Half Day: {selectedPayslip.half_days || 0}</span>
+                      <span>☐ Weekly Off: {(selectedPayslip.weeklyoff_count || 0) + (selectedPayslip.holiday_count || 0)}</span>
                       <span>☐ Late/Early: {selectedPayslip.late_count || 0}</span>
                     </div>
                   </div>

@@ -61,31 +61,34 @@ async def _get_employee_attendance_metrics(emp_id: str, start_date: Any, end_dat
         )
         late_count = int(late_result.scalar() or 0)
 
-        # Fetch halfday count
-        halfday_result = await db.execute(
-            select(func.count(AttendanceDaily.id))
+        # Fetch status counts
+        status_result = await db.execute(
+            select(AttendanceDaily.status, func.count(AttendanceDaily.id))
             .where(
                 and_(
                     AttendanceDaily.emp_id == emp_id,
                     AttendanceDaily.date >= start_date,
-                    AttendanceDaily.date <= end_date,
-                    AttendanceDaily.status == AttendanceStatus.HALFDAY
+                    AttendanceDaily.date <= end_date
                 )
             )
+            .group_by(AttendanceDaily.status)
         )
-        halfday_count = int(halfday_result.scalar() or 0)
+        status_counts = {row[0].value if hasattr(row[0], 'value') else str(row[0]): int(row[1]) for row in status_result.all()}
 
         return {
             "late_count": late_count,
-            "halfday_count": halfday_count
+            "halfday_count": status_counts.get("halfday", 0),
+            "leave_count": status_counts.get("leave", 0),
+            "weeklyoff_count": status_counts.get("weeklyoff", 0),
+            "holiday_count": status_counts.get("holiday", 0)
         }
     except Exception:
-        return {"late_count": 0, "halfday_count": 0}
+        return {"late_count": 0, "halfday_count": 0, "leave_count": 0, "weeklyoff_count": 0, "holiday_count": 0}
 
 
 async def _get_bulk_attendance_metrics(start_date: Any, end_date: Any, db: AsyncSession) -> Dict[str, Dict[str, int]]:
     try:
-        # We can fetch count of late marks grouped by emp_id
+        # 1. Fetch late counts
         late_result = await db.execute(
             select(AttendanceDaily.emp_id, func.count(AttendanceDaily.id))
             .where(
@@ -102,28 +105,49 @@ async def _get_bulk_attendance_metrics(start_date: Any, end_date: Any, db: Async
         )
         late_counts = {row[0]: int(row[1]) for row in late_result.all()}
 
-        # We can fetch count of halfday status grouped by emp_id
-        halfday_result = await db.execute(
-            select(AttendanceDaily.emp_id, func.count(AttendanceDaily.id))
+        # 2. Fetch status counts grouped by (emp_id, status)
+        status_result = await db.execute(
+            select(AttendanceDaily.emp_id, AttendanceDaily.status, func.count(AttendanceDaily.id))
             .where(
                 and_(
                     AttendanceDaily.date >= start_date,
-                    AttendanceDaily.date <= end_date,
-                    AttendanceDaily.status == AttendanceStatus.HALFDAY
+                    AttendanceDaily.date <= end_date
                 )
             )
-            .group_by(AttendanceDaily.emp_id)
+            .group_by(AttendanceDaily.emp_id, AttendanceDaily.status)
         )
-        halfday_counts = {row[0]: int(row[1]) for row in halfday_result.all()}
-
-        # Merge them
+        
+        # Merge status counts per employee
         metrics = {}
-        all_emp_ids = set(late_counts.keys()).union(halfday_counts.keys())
-        for emp_id in all_emp_ids:
-            metrics[emp_id] = {
-                "late_count": late_counts.get(emp_id, 0),
-                "halfday_count": halfday_counts.get(emp_id, 0)
-            }
+        for emp_id, status, count in status_result.all():
+            status_str = status.value if hasattr(status, 'value') else str(status)
+            if emp_id not in metrics:
+                metrics[emp_id] = {
+                    "late_count": late_counts.get(emp_id, 0),
+                    "halfday_count": 0,
+                    "leave_count": 0,
+                    "weeklyoff_count": 0,
+                    "holiday_count": 0
+                }
+            if status_str == "halfday":
+                metrics[emp_id]["halfday_count"] = count
+            elif status_str == "leave":
+                metrics[emp_id]["leave_count"] = count
+            elif status_str == "weeklyoff":
+                metrics[emp_id]["weeklyoff_count"] = count
+            elif status_str == "holiday":
+                metrics[emp_id]["holiday_count"] = count
+
+        # Make sure all employees who have late counts but no status records are handled
+        for emp_id, l_count in late_counts.items():
+            if emp_id not in metrics:
+                metrics[emp_id] = {
+                    "late_count": l_count,
+                    "halfday_count": 0,
+                    "leave_count": 0,
+                    "weeklyoff_count": 0,
+                    "holiday_count": 0
+                }
         return metrics
     except Exception:
         return {}
@@ -232,10 +256,13 @@ async def get_payslip(
 
     salary_calc_dict = _build_salary_calc_dict(calc, period)
     
-    # Fetch and enrich with attendance metrics for late_count and halfday_count
+    # Fetch and enrich with attendance metrics
     metrics = await _get_employee_attendance_metrics(employee_id, period.start_date, period.end_date, db)
     salary_calc_dict["late_count"] = metrics["late_count"]
     salary_calc_dict["halfday_count"] = metrics["halfday_count"]
+    salary_calc_dict["leave_days"] = metrics["leave_count"]
+    salary_calc_dict["weeklyoff_count"] = metrics["weeklyoff_count"]
+    salary_calc_dict["holiday_count"] = metrics["holiday_count"]
 
     employee_dict = _build_employee_dict(employee)
 
@@ -355,6 +382,15 @@ async def download_my_slip(
         
     calc, period, employee = row
     salary_calc_dict = _build_salary_calc_dict(calc, period)
+    
+    # Fetch and enrich with attendance metrics
+    metrics = await _get_employee_attendance_metrics(employee.id, period.start_date, period.end_date, db)
+    salary_calc_dict["late_count"] = metrics["late_count"]
+    salary_calc_dict["halfday_count"] = metrics["halfday_count"]
+    salary_calc_dict["leave_days"] = metrics["leave_count"]
+    salary_calc_dict["weeklyoff_count"] = metrics["weeklyoff_count"]
+    salary_calc_dict["holiday_count"] = metrics["holiday_count"]
+
     employee_dict = _build_employee_dict(employee)
     
     import calendar
@@ -390,6 +426,9 @@ async def download_my_slip(
         "present_days": salary_calc_dict.get("present_days", 30),
         "absent_days": salary_calc_dict.get("absent_days", 0),
         "leave_days": salary_calc_dict.get("leave_days", 0),
+        "weeklyoff_count": salary_calc_dict.get("weeklyoff_count", 0),
+        "holiday_count": salary_calc_dict.get("holiday_count", 0),
+        "calculation_details": salary_calc_dict.get("calculation_details", {}),
         # LOP fix: use calculation_details first, fallback to absent_days
         "lop_days": float(
             salary_calc_dict.get("calculation_details", {}).get("lop_days")
@@ -437,6 +476,15 @@ async def admin_download_slip(
         
     calc, period, employee = row
     salary_calc_dict = _build_salary_calc_dict(calc, period)
+    
+    # Fetch and enrich with attendance metrics
+    metrics = await _get_employee_attendance_metrics(employee.id, period.start_date, period.end_date, db)
+    salary_calc_dict["late_count"] = metrics["late_count"]
+    salary_calc_dict["halfday_count"] = metrics["halfday_count"]
+    salary_calc_dict["leave_days"] = metrics["leave_count"]
+    salary_calc_dict["weeklyoff_count"] = metrics["weeklyoff_count"]
+    salary_calc_dict["holiday_count"] = metrics["holiday_count"]
+
     employee_dict = _build_employee_dict(employee)
     
     import calendar
@@ -473,6 +521,9 @@ async def admin_download_slip(
             "present_days": salary_calc_dict.get("present_days", 30),
             "absent_days": salary_calc_dict.get("absent_days", 0),
             "leave_days": salary_calc_dict.get("leave_days", 0),
+            "weeklyoff_count": salary_calc_dict.get("weeklyoff_count", 0),
+            "holiday_count": salary_calc_dict.get("holiday_count", 0),
+            "calculation_details": salary_calc_dict.get("calculation_details", {}),
             # LOP fix: use calculation_details first, fallback to absent_days
             "lop_days": float(
                 salary_calc_dict.get("calculation_details", {}).get("lop_days")
@@ -541,9 +592,18 @@ async def bulk_generate_payslips(
         salary_calc_dict = _build_salary_calc_dict(calc, period)
         
         # Enrich with bulk metrics
-        metrics = bulk_metrics.get(employee.id, {"late_count": 0, "halfday_count": 0})
-        salary_calc_dict["late_count"] = metrics["late_count"]
-        salary_calc_dict["halfday_count"] = metrics["halfday_count"]
+        metrics = bulk_metrics.get(employee.id, {
+            "late_count": 0,
+            "halfday_count": 0,
+            "leave_count": 0,
+            "weeklyoff_count": 0,
+            "holiday_count": 0
+        })
+        salary_calc_dict["late_count"] = metrics.get("late_count", 0)
+        salary_calc_dict["halfday_count"] = metrics.get("halfday_count", 0)
+        salary_calc_dict["leave_days"] = metrics.get("leave_count", 0)
+        salary_calc_dict["weeklyoff_count"] = metrics.get("weeklyoff_count", 0)
+        salary_calc_dict["holiday_count"] = metrics.get("holiday_count", 0)
 
         employee_dict = _build_employee_dict(employee)
         payslip_data = payslip_generator.generate_payslip_data(

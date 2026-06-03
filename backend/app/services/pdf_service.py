@@ -363,6 +363,20 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         att_present = int(payroll.get("present_days", 0))
         att_absent  = int(payroll.get("absent_days", 0))
 
+        att_leave = sum(1 for r in att_records if r.get("status") == "leave")
+        if att_leave == 0 and payroll.get("leave_days"):
+            att_leave = int(payroll.get("leave_days") or 0)
+            
+        att_weeklyoff = sum(1 for r in att_records if r.get("status") in ("weeklyoff", "weeklyOff"))
+        if att_weeklyoff == 0 and payroll.get("weeklyoff_count"):
+            att_weeklyoff = int(payroll.get("weeklyoff_count") or 0)
+
+        att_holiday = sum(1 for r in att_records if r.get("status") == "holiday")
+        if att_holiday == 0 and payroll.get("holiday_count"):
+            att_holiday = int(payroll.get("holiday_count") or 0)
+
+        att_weeklyoff = att_weeklyoff + att_holiday
+
         y_att = y_foot + 14
         box_h = 14
         pdf.set_draw_color(*COLOR_BORDER)
@@ -377,35 +391,37 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
             f"Total Days: {att_total}",
             f"Working: {att_working}",
             f"Present: {att_present}",
+            f"Leaves: {att_leave}",
         ]
-        col_w = 63
+        col_w = 47
         for idx, txt in enumerate(items_row1):
-            x = 14 + idx * col_w
+            x = 13 + idx * col_w
             pdf.set_xy(x, row1_y)
             # Box symbol
             pdf.set_font("Helvetica", "", 7)
             pdf.set_text_color(*COLOR_TEXT_MUTED)
             pdf.cell(3, 6, safe_str(chr(9744)))  # ☐ ballot box
-            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.set_font("Helvetica", "B", 7.2)
             pdf.set_text_color(*COLOR_TEXT_DARK)
-            pdf.cell(55, 6, safe_str(txt))
+            pdf.cell(42, 6, safe_str(txt))
 
         # Row 2
         row2_y = y_att + 7.5
         items_row2 = [
             f"Absent: {att_absent}",
             f"Half Day: {att_halfday}",
+            f"Weekly Off: {att_weeklyoff}",
             f"Late/Early: {att_late}",
         ]
         for idx, txt in enumerate(items_row2):
-            x = 14 + idx * col_w
+            x = 13 + idx * col_w
             pdf.set_xy(x, row2_y)
             pdf.set_font("Helvetica", "", 7)
             pdf.set_text_color(*COLOR_TEXT_MUTED)
             pdf.cell(3, 6, safe_str(chr(9744)))
-            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.set_font("Helvetica", "B", 7.2)
             pdf.set_text_color(*COLOR_TEXT_DARK)
-            pdf.cell(55, 6, safe_str(txt))
+            pdf.cell(42, 6, safe_str(txt))
 
         # ── Footer ──
         pdf.set_font("Helvetica", "", 7.5)
@@ -532,27 +548,29 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
                 pdf.cell(190, 6, "ATTENDANCE SUMMARY", align="C")
 
                 sum_y += 8
-                box_items = [
+                 box_items = [
                     ("Total Days", att_total),
                     ("Working", att_working),
                     ("Present", att_present),
+                    ("Leaves", att_leave),
                     ("Absent", att_absent),
                     ("Half Day", att_halfday),
+                    ("Weekly Off", att_weeklyoff),
                     ("Late", att_late),
-                ]
-                box_w = 31
-                for bi, (blbl, bval) in enumerate(box_items):
-                    bx = 10 + bi * box_w + 1
-                    pdf.set_draw_color(*COLOR_BORDER)
-                    pdf.rect(bx, sum_y, box_w - 2, 16)
-                    pdf.set_font("Helvetica", "B", 12)
-                    pdf.set_text_color(*COLOR_PRIMARY)
-                    pdf.set_xy(bx, sum_y + 1)
-                    pdf.cell(box_w - 2, 8, safe_str(str(bval)), align="C")
-                    pdf.set_font("Helvetica", "", 6.5)
-                    pdf.set_text_color(*COLOR_TEXT_MUTED)
-                    pdf.set_xy(bx, sum_y + 9)
-                    pdf.cell(box_w - 2, 5, safe_str(blbl), align="C")
+                 ]
+                 box_w = 23.7
+                 for bi, (blbl, bval) in enumerate(box_items):
+                     bx = 10 + bi * box_w
+                     pdf.set_draw_color(*COLOR_BORDER)
+                     pdf.rect(bx, sum_y, box_w - 1, 16)
+                     pdf.set_font("Helvetica", "B", 11)
+                     pdf.set_text_color(*COLOR_PRIMARY)
+                     pdf.set_xy(bx, sum_y + 1)
+                     pdf.cell(box_w - 1, 8, safe_str(str(bval)), align="C")
+                     pdf.set_font("Helvetica", "", 6)
+                     pdf.set_text_color(*COLOR_TEXT_MUTED)
+                     pdf.set_xy(bx, sum_y + 9)
+                     pdf.cell(box_w - 1, 5, safe_str(blbl), align="C")
 
         return bytes(pdf.output())
 
