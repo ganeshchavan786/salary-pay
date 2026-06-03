@@ -53,6 +53,11 @@ def _build_salary_calc_dict(calc: SalaryCalculation, period: PayrollPeriod) -> D
         "total_deductions": float(calc.total_deductions or 0),
         "net_salary": float(calc.net_salary or 0),
         "period_name": period.period_name,
+        "total_days": int(calc.total_days or 0),
+        "working_days": int(calc.working_days or 0),
+        "present_days": int(calc.present_days or 0),
+        "absent_days": int(calc.absent_days or 0),
+        "leave_days": int(calc.leave_days or 0),
         "calculation_details": calc.calculation_details or {},
     }
 
@@ -251,6 +256,12 @@ async def download_my_slip(
         "lop_deduction": float(salary_calc_dict.get("lop_deduction") or 0),
         "total_deductions": float(salary_calc_dict.get("total_deductions") or 0),
         "net_pay": float(salary_calc_dict.get("net_salary") or 0),
+        "total_days": salary_calc_dict.get("total_days", 30),
+        "working_days": salary_calc_dict.get("working_days", 30),
+        "present_days": salary_calc_dict.get("present_days", 30),
+        "absent_days": salary_calc_dict.get("absent_days", 0),
+        "leave_days": salary_calc_dict.get("leave_days", 0),
+        "lop_days": float(salary_calc_dict.get("calculation_details", {}).get("lop_days") or 0.0),
         "earnings": payslip_data.get("earnings", []),
         "deductions": payslip_data.get("deductions", []),
     }
@@ -317,6 +328,12 @@ async def admin_download_slip(
             "lop_deduction": float(salary_calc_dict.get("lop_deduction") or 0),
             "total_deductions": float(salary_calc_dict.get("total_deductions") or 0),
             "net_pay": float(salary_calc_dict.get("net_salary") or 0),
+            "total_days": salary_calc_dict.get("total_days", 30),
+            "working_days": salary_calc_dict.get("working_days", 30),
+            "present_days": salary_calc_dict.get("present_days", 30),
+            "absent_days": salary_calc_dict.get("absent_days", 0),
+            "leave_days": salary_calc_dict.get("leave_days", 0),
+            "lop_days": float(salary_calc_dict.get("calculation_details", {}).get("lop_days") or 0.0),
             "earnings": payslip_data.get("earnings", []),
             "deductions": payslip_data.get("deductions", []),
         }
