@@ -225,10 +225,11 @@ async def download_my_slip(
     
     import calendar
     from app.services import pdf_service
-    # We need to map the new dict to what pdf_service expects, or use the new payslip_generator
-    # Actually payslip_generator creates dicts, we need to generate PDF.
-    # If PWA expects PDF blob, let's use the new payslip generator to get HTML/PDF.
-    # Wait, the old download_salary_slip used pdf_service.generate_salary_slip(payroll_dict, employee_dict)
+    
+    payslip_data = payslip_generator.generate_payslip_data(
+        employee=employee_dict,
+        salary_calc=salary_calc_dict,
+    )
     
     payroll_dict = {
         "month": period.start_date.month,
@@ -250,6 +251,8 @@ async def download_my_slip(
         "lop_deduction": float(salary_calc_dict.get("lop_deduction") or 0),
         "total_deductions": float(salary_calc_dict.get("total_deductions") or 0),
         "net_pay": float(salary_calc_dict.get("net_salary") or 0),
+        "earnings": payslip_data.get("earnings", []),
+        "deductions": payslip_data.get("deductions", []),
     }
     
     from fastapi import Response
@@ -289,6 +292,11 @@ async def admin_download_slip(
     from app.services import pdf_service
     
     try:
+        payslip_data = payslip_generator.generate_payslip_data(
+            employee=employee_dict,
+            salary_calc=salary_calc_dict,
+        )
+        
         payroll_dict = {
             "month": period.start_date.month,
             "year": period.start_date.year,
@@ -309,6 +317,8 @@ async def admin_download_slip(
             "lop_deduction": float(salary_calc_dict.get("lop_deduction") or 0),
             "total_deductions": float(salary_calc_dict.get("total_deductions") or 0),
             "net_pay": float(salary_calc_dict.get("net_salary") or 0),
+            "earnings": payslip_data.get("earnings", []),
+            "deductions": payslip_data.get("deductions", []),
         }
         
         from fastapi import Response
