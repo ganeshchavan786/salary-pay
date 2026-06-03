@@ -547,8 +547,7 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
                 pdf.set_xy(10, sum_y)
                 pdf.cell(190, 6, "ATTENDANCE SUMMARY", align="C")
 
-                sum_y += 8
-                 box_items = [
+                box_items = [
                     ("Total Days", att_total),
                     ("Working", att_working),
                     ("Present", att_present),
@@ -557,20 +556,20 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
                     ("Half Day", att_halfday),
                     ("Weekly Off", att_weeklyoff),
                     ("Late", att_late),
-                 ]
-                 box_w = 23.7
-                 for bi, (blbl, bval) in enumerate(box_items):
-                     bx = 10 + bi * box_w
-                     pdf.set_draw_color(*COLOR_BORDER)
-                     pdf.rect(bx, sum_y, box_w - 1, 16)
-                     pdf.set_font("Helvetica", "B", 11)
-                     pdf.set_text_color(*COLOR_PRIMARY)
-                     pdf.set_xy(bx, sum_y + 1)
-                     pdf.cell(box_w - 1, 8, safe_str(str(bval)), align="C")
-                     pdf.set_font("Helvetica", "", 6)
-                     pdf.set_text_color(*COLOR_TEXT_MUTED)
-                     pdf.set_xy(bx, sum_y + 9)
-                     pdf.cell(box_w - 1, 5, safe_str(blbl), align="C")
+                ]
+                box_w = 23.7
+                for bi, (blbl, bval) in enumerate(box_items):
+                    bx = 10 + bi * box_w
+                    pdf.set_draw_color(*COLOR_BORDER)
+                    pdf.rect(bx, sum_y, box_w - 1, 16)
+                    pdf.set_font("Helvetica", "B", 11)
+                    pdf.set_text_color(*COLOR_PRIMARY)
+                    pdf.set_xy(bx, sum_y + 1)
+                    pdf.cell(box_w - 1, 8, safe_str(str(bval)), align="C")
+                    pdf.set_font("Helvetica", "", 6)
+                    pdf.set_text_color(*COLOR_TEXT_MUTED)
+                    pdf.set_xy(bx, sum_y + 9)
+                    pdf.cell(box_w - 1, 5, safe_str(blbl), align="C")
 
         return bytes(pdf.output())
 
