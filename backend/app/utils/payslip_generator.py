@@ -46,6 +46,35 @@ class PayslipGenerator:
         earnings = [e for e in earnings if e["amount"] > 0]
         deductions = [d for d in deductions if d["amount"] > 0]
 
+        calc_details = salary_calc.get("calculation_details", {})
+        
+        # LOP Days: first try calculation_details, then fallback to absent_days, then 0.0
+        lop_days = calc_details.get("lop_days")
+        if lop_days is None:
+            lop_days = salary_calc.get("absent_days", 0)
+        try:
+            lop_days = float(lop_days)
+        except (ValueError, TypeError):
+            lop_days = 0.0
+
+        # Half days: first try calculation_details, then fallback to salary_calc or 0.0
+        half_days = calc_details.get("halfday_count")
+        if half_days is None:
+            half_days = salary_calc.get("half_days") or salary_calc.get("halfday_count") or 0.0
+        try:
+            half_days = float(half_days)
+        except (ValueError, TypeError):
+            half_days = 0.0
+
+        # Late Count: first try calculation_details, then fallback to salary_calc or 0
+        late_count = calc_details.get("late_count")
+        if late_count is None:
+            late_count = salary_calc.get("late_count") or salary_calc.get("late_mark_count") or 0
+        try:
+            late_count = int(late_count)
+        except (ValueError, TypeError):
+            late_count = 0
+
         return {
             "company": company_info or {"name": "Company Name", "address": "Company Address"},
             "employee": {
@@ -76,6 +105,10 @@ class PayslipGenerator:
             "present_days": salary_calc.get("present_days", 0),
             "absent_days": salary_calc.get("absent_days", 0),
             "total_days": salary_calc.get("total_days", 0),
+            "lop_days": lop_days,
+            "half_days": half_days,
+            "late_count": late_count,
+            "calculation_details": calc_details,
             "generated_at": datetime.utcnow().isoformat(),
         }
 

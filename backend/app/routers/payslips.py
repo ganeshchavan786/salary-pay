@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, extract
+from sqlalchemy import select, and_, or_, extract, func
 from typing import Any, Dict, List
 
 from app.database import get_db
@@ -8,7 +8,7 @@ from app.models.salary_calculation import SalaryCalculation, SalaryCalculationSt
 from app.models.payroll_period import PayrollPeriod
 from app.models.employee import Employee
 from app.models.user import User
-from app.models.attendance_daily import AttendanceDaily
+from app.models.attendance_daily import AttendanceDaily, AttendanceStatus
 from app.utils.deps import get_current_user, require_admin
 from app.utils.payslip_generator import payslip_generator
 
@@ -40,6 +40,94 @@ async def _fetch_attendance_records(emp_id: str, month: int, year: int, db: Asyn
         ]
     except Exception:
         return []
+
+
+async def _get_employee_attendance_metrics(emp_id: str, start_date: Any, end_date: Any, db: AsyncSession) -> Dict[str, Any]:
+    try:
+        # Fetch late count
+        late_result = await db.execute(
+            select(func.count(AttendanceDaily.id))
+            .where(
+                and_(
+                    AttendanceDaily.emp_id == emp_id,
+                    AttendanceDaily.date >= start_date,
+                    AttendanceDaily.date <= end_date,
+                    or_(
+                        AttendanceDaily.is_late_mark == True,
+                        AttendanceDaily.is_half_late_mark == True
+                    )
+                )
+            )
+        )
+        late_count = int(late_result.scalar() or 0)
+
+        # Fetch halfday count
+        halfday_result = await db.execute(
+            select(func.count(AttendanceDaily.id))
+            .where(
+                and_(
+                    AttendanceDaily.emp_id == emp_id,
+                    AttendanceDaily.date >= start_date,
+                    AttendanceDaily.date <= end_date,
+                    AttendanceDaily.status == AttendanceStatus.HALFDAY
+                )
+            )
+        )
+        halfday_count = int(halfday_result.scalar() or 0)
+
+        return {
+            "late_count": late_count,
+            "halfday_count": halfday_count
+        }
+    except Exception:
+        return {"late_count": 0, "halfday_count": 0}
+
+
+async def _get_bulk_attendance_metrics(start_date: Any, end_date: Any, db: AsyncSession) -> Dict[str, Dict[str, int]]:
+    try:
+        # We can fetch count of late marks grouped by emp_id
+        late_result = await db.execute(
+            select(AttendanceDaily.emp_id, func.count(AttendanceDaily.id))
+            .where(
+                and_(
+                    AttendanceDaily.date >= start_date,
+                    AttendanceDaily.date <= end_date,
+                    or_(
+                        AttendanceDaily.is_late_mark == True,
+                        AttendanceDaily.is_half_late_mark == True
+                    )
+                )
+            )
+            .group_by(AttendanceDaily.emp_id)
+        )
+        late_counts = {row[0]: int(row[1]) for row in late_result.all()}
+
+        # We can fetch count of halfday status grouped by emp_id
+        halfday_result = await db.execute(
+            select(AttendanceDaily.emp_id, func.count(AttendanceDaily.id))
+            .where(
+                and_(
+                    AttendanceDaily.date >= start_date,
+                    AttendanceDaily.date <= end_date,
+                    AttendanceDaily.status == AttendanceStatus.HALFDAY
+                )
+            )
+            .group_by(AttendanceDaily.emp_id)
+        )
+        halfday_counts = {row[0]: int(row[1]) for row in halfday_result.all()}
+
+        # Merge them
+        metrics = {}
+        all_emp_ids = set(late_counts.keys()).union(halfday_counts.keys())
+        for emp_id in all_emp_ids:
+            metrics[emp_id] = {
+                "late_count": late_counts.get(emp_id, 0),
+                "halfday_count": halfday_counts.get(emp_id, 0)
+            }
+        return metrics
+    except Exception:
+        return {}
+
 
 router = APIRouter(tags=["Payslips"])
 
@@ -143,6 +231,12 @@ async def get_payslip(
         )
 
     salary_calc_dict = _build_salary_calc_dict(calc, period)
+    
+    # Fetch and enrich with attendance metrics for late_count and halfday_count
+    metrics = await _get_employee_attendance_metrics(employee_id, period.start_date, period.end_date, db)
+    salary_calc_dict["late_count"] = metrics["late_count"]
+    salary_calc_dict["halfday_count"] = metrics["halfday_count"]
+
     employee_dict = _build_employee_dict(employee)
 
     payslip_data = payslip_generator.generate_payslip_data(
@@ -439,9 +533,18 @@ async def bulk_generate_payslips(
             detail="No salary calculations found for this period.",
         )
 
+    # Bulk fetch metrics for all employees in the period
+    bulk_metrics = await _get_bulk_attendance_metrics(period.start_date, period.end_date, db)
+
     payslips: List[Dict] = []
     for calc, employee in rows:
         salary_calc_dict = _build_salary_calc_dict(calc, period)
+        
+        # Enrich with bulk metrics
+        metrics = bulk_metrics.get(employee.id, {"late_count": 0, "halfday_count": 0})
+        salary_calc_dict["late_count"] = metrics["late_count"]
+        salary_calc_dict["halfday_count"] = metrics["halfday_count"]
+
         employee_dict = _build_employee_dict(employee)
         payslip_data = payslip_generator.generate_payslip_data(
             employee=employee_dict,
