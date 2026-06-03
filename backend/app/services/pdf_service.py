@@ -9,7 +9,6 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         # Helper functions
         def safe_str(text):
             if text is None: return "-"
-            # Replace special dashes and characters not in latin-1
             t = str(text).replace("\u2014", "-").replace("\u2013", "-")
             return t.encode('latin-1', 'replace').decode('latin-1')
 
@@ -25,27 +24,26 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         COMPANY_NAME = company_data.get("name") or payroll.get("company_name") or employee.get("company_name") or "SalaryPay HR Solutions"
         COMPANY_ADDRESS = company_data.get("address") or payroll.get("company_address") or employee.get("company_address") or "123 Business Hub, Pune, Maharashtra - 411045"
         
-        # Color tokens matching Zoho Slate/Grey premium palette
-        COLOR_PRIMARY = (15, 23, 42)      # Slate 900
-        COLOR_TEXT_DARK = (15, 23, 42)    # Slate 900
-        COLOR_TEXT_MUTED = (100, 116, 139) # Slate 500
-        COLOR_BORDER = (220, 220, 220)    # Light gray borders
+        # Color tokens
+        COLOR_PRIMARY   = (15, 23, 42)       # Slate 900
+        COLOR_TEXT_DARK = (15, 23, 42)
+        COLOR_TEXT_MUTED = (100, 116, 139)
+        COLOR_BORDER    = (220, 220, 220)
 
-        month_num = int(payroll.get("month", 1))
-        year_num = int(payroll.get("year", 2026))
+        month_num  = int(payroll.get("month", 1))
+        year_num   = int(payroll.get("year", 2026))
         month_name = calendar.month_name[month_num]
 
         pdf = FPDF()
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=10)
 
-        # ── Outer Thin Border around entire page (margin 10mm) ──
+        # ── Outer Border ──
         pdf.set_draw_color(*COLOR_BORDER)
         pdf.set_line_width(0.2)
         pdf.rect(10, 10, 190, 277)
 
-        # ── Header Section ──
-        # Left side: Company Name & Address
+        # ── Header ──
         pdf.set_text_color(*COLOR_PRIMARY)
         pdf.set_font("Helvetica", "B", 14)
         pdf.set_xy(14, 14)
@@ -56,9 +54,8 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         pdf.set_xy(14, 20)
         pdf.cell(100, 5, safe_str(COMPANY_ADDRESS))
         
-        # Right side: Styled Logo representation
-        # Colors: Green, Orange, Blue, Red
-        logo_colors = [(15, 157, 88), (244, 180, 0), (26, 115, 232), (219, 68, 85)]
+        # Logo squares (Google colours)
+        logo_colors    = [(15, 157, 88), (244, 180, 0), (26, 115, 232), (219, 68, 85)]
         logo_positions = [(178, 14), (182, 14), (180, 17), (184, 17)]
         for idx, (px, py) in enumerate(logo_positions):
             pdf.set_fill_color(*logo_colors[idx])
@@ -69,20 +66,19 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         pdf.set_xy(176, 21.5)
         pdf.cell(16, 3, "SALARYPAY", align="C")
 
-        # Top header bottom boundary line
         pdf.set_draw_color(*COLOR_BORDER)
         pdf.line(10, 28, 200, 28)
 
-        # ── Payslip Month Banner Subtitle ──
-        pdf.set_fill_color(248, 250, 252) # light slate-50
+        # ── Payslip Month Banner ──
+        pdf.set_fill_color(248, 250, 252)
         pdf.rect(10, 28, 190, 10, "F")
         pdf.set_text_color(*COLOR_PRIMARY)
         pdf.set_font("Helvetica", "B", 10.5)
         pdf.set_xy(10, 28)
         pdf.cell(190, 10, safe_str(f"Payslip for the month of {month_name} {year_num}"), align="C", border="B")
 
-        # ── Employee Pay Summary block (y=38 to y=78) ──
-        # Left: Info metadata
+        # ── Employee Pay Summary block (y=38..90) ──
+        # Title
         pdf.set_text_color(*COLOR_PRIMARY)
         pdf.set_font("Helvetica", "B", 8.5)
         pdf.set_xy(14, 41)
@@ -90,26 +86,25 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
 
         # Format joining date
         joining_date_raw = employee.get("joining_date", "N/A")
-        joining_date_str = joining_date_raw
-        if joining_date_raw and "-" in joining_date_raw:
+        joining_date_str = str(joining_date_raw) if joining_date_raw else "N/A"
+        if joining_date_str and joining_date_str != "N/A" and "-" in joining_date_str:
             try:
-                parts = joining_date_raw.split("-")
+                parts = joining_date_str.split("-")
                 if len(parts) == 3:
                     joining_date_str = f"{parts[2]}/{parts[1]}/{parts[0]}"
             except:
                 pass
 
-        # Calculate pay date from paid_at or default
-        from datetime import datetime
+        # Pay Date
+        from datetime import datetime as dt
         pay_date_str = "N/A"
         paid_at = payroll.get("paid_at")
         if paid_at:
             try:
-                dt = datetime.fromisoformat(str(paid_at).replace("Z", "+00:00"))
-                pay_date_str = dt.strftime("%d/%m/%Y")
+                d = dt.fromisoformat(str(paid_at).replace("Z", "+00:00"))
+                pay_date_str = d.strftime("%d/%m/%Y")
             except:
                 pass
-        
         if pay_date_str == "N/A":
             try:
                 last_day = calendar.monthrange(year_num, month_num)[1]
@@ -117,32 +112,58 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
             except:
                 pay_date_str = f"30/{month_num:02d}/{year_num}"
 
-        emp_info_rows = [
-            ("Employee Name", f"{employee.get('name', 'N/A')}, {employee.get('emp_code', 'N/A')}"),
-            ("Designation", employee.get("designation", "N/A")),
+        # ── Left column info rows (y starting 47) ──
+        # Two sub-columns on the left (x=14..112)
+        # Col1: labels+values  width=49
+        # Col2: labels+values  width=49
+        left_info_col1 = [
+            ("Employee Code",   employee.get("emp_code", "N/A")),
             ("Date of Joining", joining_date_str),
-            ("Pay Period", f"{month_name} {year_num}"),
-            ("Pay Date", pay_date_str),
+            ("Aadhaar No",      employee.get("aadhaar_no", "-")),
+            ("Employee Name",   employee.get("name", "N/A")),
+            ("Location",        employee.get("location", "-")),
+            ("Working Days",    str(payroll.get("working_days", payroll.get("total_days", 30)))),
+        ]
+        left_info_col2 = [
+            ("Designation",     employee.get("designation", "-")),
+            ("UAN No",          employee.get("uan_no", "-")),
+            ("Present Days",    str(payroll.get("present_days", payroll.get("total_days", 30)))),
+            ("PF No",           employee.get("pf_no", "-")),
+            ("ESI No",          employee.get("esi_no", "-")),
+            ("PAN No",          employee.get("pan_no", "-")),
         ]
 
-        # Draw left text info
-        y_offset = 47
-        for label, val in emp_info_rows:
-            pdf.set_xy(14, y_offset)
-            pdf.set_font("Helvetica", "", 8.5)
-            pdf.set_text_color(*COLOR_TEXT_DARK)
-            pdf.cell(30, 5, safe_str(label))
-            pdf.cell(5, 5, ": ")
-            pdf.set_font("Helvetica", "B", 8.5)
-            pdf.cell(60, 5, safe_str(val))
-            y_offset += 5.8
+        row_h = 5.5
+        y_start = 47
 
-        # Paid days & LOP days calculations
+        for i, ((lbl1, val1), (lbl2, val2)) in enumerate(zip(left_info_col1, left_info_col2)):
+            y_row = y_start + i * row_h
+
+            # --- Col 1 ---
+            pdf.set_xy(14, y_row)
+            pdf.set_font("Helvetica", "", 7.5)
+            pdf.set_text_color(*COLOR_TEXT_MUTED)
+            pdf.cell(26, row_h, safe_str(lbl1))
+            pdf.set_text_color(*COLOR_TEXT_DARK)
+            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.cell(2, row_h, ":")
+            pdf.cell(20, row_h, safe_str(val1))
+
+            # --- Col 2 ---
+            pdf.set_xy(62, y_row)
+            pdf.set_font("Helvetica", "", 7.5)
+            pdf.set_text_color(*COLOR_TEXT_MUTED)
+            pdf.cell(26, row_h, safe_str(lbl2))
+            pdf.set_text_color(*COLOR_TEXT_DARK)
+            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.cell(2, row_h, ":")
+            pdf.cell(22, row_h, safe_str(val2))
+
+        # ── Right side: Net Pay box ──
         lop_days = payroll.get("lop_days")
         if lop_days is None:
             calc_details = payroll.get("calculation_details", {})
             lop_days = calc_details.get("lop_days")
-        
         try:
             lop_days = float(lop_days or 0)
         except:
@@ -162,9 +183,8 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
                 
         paid_days = total_days - lop_days
         paid_days_str = f"{int(paid_days)}" if paid_days.is_integer() else f"{paid_days:.1f}"
-        lop_days_str = f"{int(lop_days)}" if lop_days.is_integer() else f"{lop_days:.1f}"
+        lop_days_str  = f"{int(lop_days)}"  if lop_days.is_integer()  else f"{lop_days:.1f}"
 
-        # Right: Large Net Pay and days info
         pdf.set_font("Helvetica", "", 9.5)
         pdf.set_text_color(*COLOR_TEXT_DARK)
         pdf.set_xy(112, 45)
@@ -180,166 +200,143 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         pdf.set_xy(112, 65)
         pdf.cell(88, 5, safe_str(f"Paid Days : {paid_days_str} | LOP Days : {lop_days_str}"), align="C")
 
-        # Outer box vertical divider and bottom boundary
-        pdf.set_draw_color(*COLOR_BORDER)
-        pdf.line(112, 38, 112, 78)
-        pdf.line(10, 78, 200, 78)
+        # Dividers: vertical separator and bottom of summary block
+        summary_bottom = y_start + 6 * row_h + 2  # ends just below last row
+        summary_bottom = max(summary_bottom, 82)
 
-        # ── Earnings & Deductions Dynamic Resolution ──
+        pdf.set_draw_color(*COLOR_BORDER)
+        pdf.line(112, 38, 112, summary_bottom)
+        pdf.line(10, summary_bottom, 200, summary_bottom)
+
+        # ── Earnings & Deductions tables ──
         raw_earnings = payroll.get("earnings")
         if isinstance(raw_earnings, list):
-            earnings = []
-            for item in raw_earnings:
-                earnings.append((item.get("label", "Earnings Item"), float(item.get("amount") or 0)))
+            earnings = [(item.get("label", "Earnings"), float(item.get("amount") or 0)) for item in raw_earnings]
         else:
             earnings = [
-                ("Basic Salary", payroll.get("basic_salary", 0)),
-                ("HRA", payroll.get("hra", 0)),
-                ("Special Allowance", payroll.get("special_allowance", 0)),
-                ("Travel Allowance", payroll.get("travel_allowance", 0)),
-                ("Medical Allowance", payroll.get("medical_allowance", 0)),
-                ("Overtime", payroll.get("overtime_amount", 0)),
+                ("Basic Salary",       payroll.get("basic_salary", 0)),
+                ("HRA",                payroll.get("hra", 0)),
+                ("Special Allowance",  payroll.get("special_allowance", 0)),
+                ("Travel Allowance",   payroll.get("travel_allowance", 0)),
+                ("Medical Allowance",  payroll.get("medical_allowance", 0)),
+                ("Overtime",           payroll.get("overtime_amount", 0)),
             ]
             if payroll.get("arrears_amount", 0) > 0:
                 earnings.append(("Arrears", payroll.get("arrears_amount", 0)))
                 
         raw_deductions = payroll.get("deductions")
         if isinstance(raw_deductions, list):
-            deductions = []
-            for item in raw_deductions:
-                deductions.append((item.get("label", "Deductions Item"), float(item.get("amount") or 0)))
+            deductions = [(item.get("label", "Deduction"), float(item.get("amount") or 0)) for item in raw_deductions]
         else:
             deductions = [
-                ("Income Tax (TDS)", payroll.get("income_tax", 0)),
-                ("Provident Fund (PF)", payroll.get("pf_deduction", 0)),
-                ("Professional Tax (PT)", payroll.get("pt_deduction", 0)),
-                ("ESI", payroll.get("esi_employee", 0)),
-                ("Loan / Advance", payroll.get("loan_deductions", 0)),
-                ("LOP Deduction", payroll.get("lop_deduction", 0)),
+                ("Income Tax (TDS)",   payroll.get("income_tax", 0)),
+                ("Provident Fund (PF)",payroll.get("pf_deduction", 0)),
+                ("Professional Tax",   payroll.get("pt_deduction", 0)),
+                ("ESI",                payroll.get("esi_employee", 0)),
+                ("Loan / Advance",     payroll.get("loan_deductions", 0)),
+                ("LOP Deduction",      payroll.get("lop_deduction", 0)),
             ]
 
-        # Filter out 0 amounts
-        earnings = [e for e in earnings if e[1] > 0]
-        deductions = [d for d in deductions if d[1] > 0]
+        # Filter zero amounts
+        earnings   = [e for e in earnings   if float(e[1] or 0) > 0]
+        deductions = [d for d in deductions if float(d[1] or 0) > 0]
 
-        # Table Column Headers
-        pdf.set_fill_color(248, 250, 252) # light background
-        pdf.rect(10, 78, 95, 8, "F")
-        pdf.rect(105, 78, 95, 8, "F")
+        table_y = summary_bottom
+
+        # Table Headers (no YTD)
+        pdf.set_fill_color(248, 250, 252)
+        pdf.rect(10,  table_y, 95, 8, "F")
+        pdf.rect(105, table_y, 95, 8, "F")
 
         pdf.set_font("Helvetica", "B", 8)
         pdf.set_text_color(*COLOR_TEXT_DARK)
         
-        pdf.set_xy(10, 78)
-        pdf.cell(50, 8, "  EARNINGS", border="B", align="L")
-        pdf.cell(20, 8, "AMOUNT  ", border="B", align="R")
-        pdf.cell(25, 8, "YTD  ", border="B", align="R")
+        pdf.set_xy(10, table_y)
+        pdf.cell(68, 8, "  EARNINGS", border="B", align="L")
+        pdf.cell(27, 8, "AMOUNT  ",   border="B", align="R")
         
-        pdf.set_xy(105, 78)
-        pdf.cell(50, 8, "  DEDUCTIONS", border="B", align="L")
-        pdf.cell(20, 8, "AMOUNT  ", border="B", align="R")
-        pdf.cell(25, 8, "YTD  ", border="B", align="R")
+        pdf.set_xy(105, table_y)
+        pdf.cell(68, 8, "  DEDUCTIONS", border="B", align="L")
+        pdf.cell(27, 8, "AMOUNT  ",    border="B", align="R")
         pdf.ln()
 
-        # Calculate YTD multiplier based on April fiscal year start
-        multiplier = month_num - 3 if month_num >= 4 else month_num + 9
-
-        # Ensure symmetric vertical columns, pad shorter list
         max_rows = max(len(earnings), len(deductions), 4)
-        
-        start_y = 86
+        start_y  = table_y + 8
         pdf.set_y(start_y)
+
         for i in range(max_rows):
             pdf.set_x(10)
-            
-            # Left side: Earnings data
+
+            # Earnings row
             if i < len(earnings):
                 label_e = f"  {earnings[i][0]}"
-                val_e = earnings[i][1]
-                val_e_str = fmt(val_e) + "  "
-                ytd_e = val_e * multiplier
-                ytd_e_str = fmt(ytd_e) + "  "
+                val_e   = f"{fmt(earnings[i][1])}  "
             else:
-                label_e = ""
-                val_e_str = ""
-                ytd_e_str = ""
-                
+                label_e = ""; val_e = ""
+
             pdf.set_font("Helvetica", "", 8)
-            pdf.cell(50, 8, safe_str(label_e), border="B")
-            pdf.cell(20, 8, safe_str(val_e_str), border="B", align="R")
-            pdf.cell(25, 8, safe_str(ytd_e_str), border="B", align="R")
-            
-            # Right side: Deductions data
+            pdf.cell(68, 8, safe_str(label_e), border="B")
+            pdf.cell(27, 8, safe_str(val_e),   border="B", align="R")
+
+            # Deductions row
             if i < len(deductions):
                 label_d = f"  {deductions[i][0]}"
-                val_d = deductions[i][1]
-                val_d_str = fmt(val_d) + "  "
-                ytd_d = val_d * multiplier
-                ytd_d_str = fmt(ytd_d) + "  "
+                val_d   = f"{fmt(deductions[i][1])}  "
             else:
-                label_d = ""
-                val_d_str = ""
-                ytd_d_str = ""
-                
-            pdf.cell(50, 8, safe_str(label_d), border="B")
-            pdf.cell(20, 8, safe_str(val_d_str), border="B", align="R")
-            pdf.cell(25, 8, safe_str(ytd_d_str), border="B", align="R")
+                label_d = ""; val_d = ""
+
+            pdf.cell(68, 8, safe_str(label_d), border="B")
+            pdf.cell(27, 8, safe_str(val_d),   border="B", align="R")
             pdf.ln()
 
         end_y = start_y + (max_rows * 8)
 
-        # Totals Row
+        # Totals row
         pdf.set_x(10)
         pdf.set_font("Helvetica", "B", 8)
-        pdf.cell(50, 8, "  Gross Earnings", border="B")
-        pdf.cell(20, 8, safe_str(fmt(payroll.get("gross_salary", 0)) + "  "), border="B", align="R")
-        pdf.cell(25, 8, "", border="B")
-        
-        pdf.cell(50, 8, "  Total Deductions", border="B")
-        pdf.cell(20, 8, safe_str(fmt(payroll.get("total_deductions", 0)) + "  "), border="B", align="R")
-        pdf.cell(25, 8, "", border="B")
+        pdf.cell(68, 8, "  Gross Earnings",   border="B")
+        pdf.cell(27, 8, safe_str(fmt(payroll.get("gross_salary", 0)) + "  "), border="B", align="R")
+        pdf.cell(68, 8, "  Total Deductions", border="B")
+        pdf.cell(27, 8, safe_str(fmt(payroll.get("total_deductions", 0)) + "  "), border="B", align="R")
 
-        # Vertical Divider Lines in the tables
+        # Vertical dividers in table (only 3 lines now, no YTD)
         pdf.set_draw_color(*COLOR_BORDER)
-        pdf.line(60, 78, 60, end_y)
-        pdf.line(80, 78, 80, end_y)
-        pdf.line(105, 78, 105, end_y + 8)
-        pdf.line(155, 78, 155, end_y)
-        pdf.line(175, 78, 175, end_y)
-        
-        # Bottom table border line
+        pdf.line(78,  table_y, 78,  end_y)        # earnings label/amount split
+        pdf.line(105, table_y, 105, end_y + 8)    # table centre divider
+        pdf.line(173, table_y, 173, end_y)        # deductions label/amount split
+
+        # Bottom table border
         pdf.line(10, end_y + 8, 200, end_y + 8)
 
-        # ── Net Pay Math Summary Block ──
+        # ── Net Pay Math Block ──
         y_math = end_y + 14
         pdf.set_fill_color(248, 250, 252)
         pdf.rect(10, y_math, 190, 8, "F")
         
         pdf.set_font("Helvetica", "B", 8)
         pdf.set_xy(10, y_math)
-        pdf.cell(145, 8, "  NET PAY", border="TB")
-        pdf.cell(45, 8, "AMOUNT  ", border="TB", align="R")
+        pdf.cell(145, 8, "  NET PAY",  border="TB")
+        pdf.cell(45,  8, "AMOUNT  ",   border="TB", align="R")
         
         pdf.set_xy(10, y_math + 8)
         pdf.set_font("Helvetica", "", 8)
         pdf.cell(145, 8, "  Gross Earnings", border="B")
-        pdf.cell(45, 8, safe_str(fmt(payroll.get("gross_salary", 0)) + "  "), border="B", align="R")
+        pdf.cell(45,  8, safe_str(fmt(payroll.get("gross_salary", 0)) + "  "), border="B", align="R")
         
         pdf.set_xy(10, y_math + 16)
         pdf.cell(145, 8, "  Total Deductions", border="B")
-        pdf.cell(45, 8, safe_str(f"(-) {fmt(payroll.get('total_deductions', 0))}  "), border="B", align="R")
+        pdf.cell(45,  8, safe_str(f"(-) {fmt(payroll.get('total_deductions', 0))}  "), border="B", align="R")
         
         pdf.set_fill_color(248, 250, 252)
         pdf.rect(10, y_math + 24, 190, 8, "F")
         pdf.set_xy(10, y_math + 24)
         pdf.set_font("Helvetica", "B", 8.5)
-        pdf.cell(145, 8, "Total Net Payable  ", border="B", align="R")
-        pdf.cell(45, 8, safe_str(f"Rs. {fmt(payroll.get('net_pay', 0))}  "), border="B", align="R")
+        pdf.cell(145, 8, "Total Net Payable  ",   border="B", align="R")
+        pdf.cell(45,  8, safe_str(f"Rs. {fmt(payroll.get('net_pay', 0))}  "), border="B", align="R")
         
-        # Divider inside Net Pay math box
         pdf.line(155, y_math, 155, y_math + 32)
 
-        # ── Centered Footnote & Words block ──
+        # ── Footnote ──
         words = str(payroll.get("net_pay_words", "Zero Only"))
         if not words.lower().startswith("indian rupee"):
             words = f"Indian Rupee {words}"
@@ -355,7 +352,7 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         pdf.set_xy(10, y_foot + 6)
         pdf.cell(190, 5, "**Total Net Payable = Gross Earnings - Total Deductions", align="C")
 
-        # ── Sign-free Declaration at Page Bottom ──
+        # ── Footer ──
         pdf.set_font("Helvetica", "", 7.5)
         pdf.set_text_color(160, 160, 160)
         pdf.set_xy(10, 276)

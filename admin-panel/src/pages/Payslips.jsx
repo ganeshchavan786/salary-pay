@@ -218,7 +218,6 @@ export default function Payslips() {
         };
 
         const { month, year } = getPeriodMonthYear(selectedPayslip.period_name);
-        const multiplier = month >= 4 ? month - 3 : month + 9;
 
         // Calculate pay date
         let payDateStr = 'N/A';
@@ -312,63 +311,70 @@ export default function Payslips() {
                   </div>
 
                   {/* Employee Pay Summary Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 border-b border-slate-200">
-                    {/* Left: Metadata list */}
-                    <div className="md:col-span-7 p-4">
+                  <div className="flex border-b border-slate-200">
+                    {/* Left: Two-column metadata */}
+                    <div className="flex-1 p-4">
                       <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">EMPLOYEE PAY SUMMARY</h5>
-                      <div className="space-y-1.5 text-xs">
-                        <div className="grid grid-cols-12">
-                          <span className="col-span-4 text-slate-500">Employee Name</span>
-                          <span className="col-span-1">:</span>
-                          <span className="col-span-7 font-bold text-slate-800">
-                            {selectedPayslip.employee.name}, {selectedPayslip.employee.emp_code}
-                          </span>
+                      {/* 2 sub-columns */}
+                      <div className="grid grid-cols-2 gap-x-2 text-[11px]">
+                        {/* Sub-column 1 */}
+                        <div className="space-y-1">
+                          {[
+                            ['Employee Code', selectedPayslip.employee?.emp_code || '-'],
+                            ['Date of Joining', joiningDateStr],
+                            ['Aadhaar No', selectedPayslip.employee?.aadhaar_no || '-'],
+                            ['Employee Name', selectedPayslip.employee?.name || '-'],
+                            ['Location', selectedPayslip.employee?.location || '-'],
+                            ['Working Days', String(selectedPayslip.working_days ?? selectedPayslip.total_days ?? '-')],
+                          ].map(([lbl, val]) => (
+                            <div key={lbl} className="flex gap-1">
+                              <span className="text-slate-400 w-24 shrink-0">{lbl}</span>
+                              <span className="text-slate-500">:</span>
+                              <span className="font-semibold text-slate-800 break-all">{val}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="grid grid-cols-12">
-                          <span className="col-span-4 text-slate-500">Designation</span>
-                          <span className="col-span-1">:</span>
-                          <span className="col-span-7 font-bold text-slate-800">{selectedPayslip.employee.designation || 'N/A'}</span>
-                        </div>
-                        <div className="grid grid-cols-12">
-                          <span className="col-span-4 text-slate-500">Date of Joining</span>
-                          <span className="col-span-1">:</span>
-                          <span className="col-span-7 font-bold text-slate-800">{joiningDateStr}</span>
-                        </div>
-                        <div className="grid grid-cols-12">
-                          <span className="col-span-4 text-slate-500">Pay Period</span>
-                          <span className="col-span-1">:</span>
-                          <span className="col-span-7 font-bold text-slate-800">{selectedPayslip.period_name || 'N/A'}</span>
-                        </div>
-                        <div className="grid grid-cols-12">
-                          <span className="col-span-4 text-slate-500">Pay Date</span>
-                          <span className="col-span-1">:</span>
-                          <span className="col-span-7 font-bold text-slate-800">{payDateStr}</span>
+                        {/* Sub-column 2 */}
+                        <div className="space-y-1">
+                          {[
+                            ['Designation', selectedPayslip.employee?.designation || '-'],
+                            ['UAN No', selectedPayslip.employee?.uan_no || '-'],
+                            ['Present Days', String(selectedPayslip.present_days ?? '-')],
+                            ['PF No', selectedPayslip.employee?.pf_no || '-'],
+                            ['ESI No', selectedPayslip.employee?.esi_no || '-'],
+                            ['PAN No', selectedPayslip.employee?.pan_no || '-'],
+                          ].map(([lbl, val]) => (
+                            <div key={lbl} className="flex gap-1">
+                              <span className="text-slate-400 w-24 shrink-0">{lbl}</span>
+                              <span className="text-slate-500">:</span>
+                              <span className="font-semibold text-slate-800 break-all">{val}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
 
                     {/* Right: Net Pay Callout */}
-                    <div className="md:col-span-5 p-4 flex flex-col justify-center items-center border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50/30">
-                      <span className="text-[11px] text-slate-500 font-medium">Employee Net Pay</span>
-                      <span className="text-2xl font-black text-slate-900 my-1">
+                    <div className="w-44 p-4 flex flex-col justify-center items-center border-l border-slate-200 bg-slate-50/30 shrink-0">
+                      <span className="text-[11px] text-slate-500 font-medium text-center">Employee Net Pay</span>
+                      <span className="text-xl font-black text-slate-900 my-1 text-center">
                         Rs. {selectedPayslip.net_salary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </span>
-                      <span className="text-[10px] text-slate-600 font-medium bg-slate-100 px-2 py-0.5 rounded-full mt-0.5">
-                        Paid Days : {paidDaysStr} | LOP Days : {lopDaysStr}
+                      <span className="text-[10px] text-slate-600 font-medium bg-slate-100 px-2 py-0.5 rounded-full mt-0.5 text-center">
+                        Paid: {paidDaysStr} | LOP: {lopDaysStr}
                       </span>
                     </div>
                   </div>
 
-                  {/* Side-by-side Tables */}
+                  {/* Side-by-side Tables (NO YTD) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 border-b border-slate-200 divide-x divide-slate-200">
-                    {/* Left side: Earnings */}
+                    {/* Left: Earnings */}
                     <div>
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
                             <th className="px-3 py-2 text-left">Earnings</th>
                             <th className="px-3 py-2 text-right">Amount</th>
-                            <th className="px-3 py-2 text-right">YTD</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -376,10 +382,7 @@ export default function Payslips() {
                             <tr key={idx} className="h-9">
                               <td className="px-3 py-2 text-left text-slate-600 font-medium">{e.label}</td>
                               <td className="px-3 py-2 text-right text-slate-800 font-bold">
-                                {e.amount !== null ? `${e.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
-                              </td>
-                              <td className="px-3 py-2 text-right text-slate-500">
-                                {e.amount !== null ? `${(e.amount * multiplier).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
+                                {e.amount !== null ? e.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : ''}
                               </td>
                             </tr>
                           ))}
@@ -387,14 +390,13 @@ export default function Payslips() {
                       </table>
                     </div>
 
-                    {/* Right side: Deductions */}
+                    {/* Right: Deductions */}
                     <div>
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
                             <th className="px-3 py-2 text-left">Deductions</th>
                             <th className="px-3 py-2 text-right">Amount</th>
-                            <th className="px-3 py-2 text-right">YTD</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -402,10 +404,7 @@ export default function Payslips() {
                             <tr key={idx} className="h-9">
                               <td className="px-3 py-2 text-left text-slate-600 font-medium">{d.label}</td>
                               <td className="px-3 py-2 text-right text-slate-800 font-bold">
-                                {d.amount !== null ? `${d.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
-                              </td>
-                              <td className="px-3 py-2 text-right text-slate-500">
-                                {d.amount !== null ? `${(d.amount * multiplier).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
+                                {d.amount !== null ? d.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : ''}
                               </td>
                             </tr>
                           ))}

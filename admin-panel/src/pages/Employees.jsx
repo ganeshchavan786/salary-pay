@@ -121,7 +121,8 @@ export default function Employees() {
     emp_code: '', name: '', email: '', department: '', salary: '', 
     designation: '', joining_date: '', phone: '', remarks: '',
     aadhaar_no: '', pan_no: '', bank_name: '', account_no: '', ifsc_code: '',
-    current_address: '', permanent_address: '', emergency_name: '', emergency_phone: ''
+    current_address: '', permanent_address: '', emergency_name: '', emergency_phone: '',
+    uan_no: '', pf_no: '', esi_no: '', location: ''
   }
   const [formData, setFormData] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
@@ -217,7 +218,11 @@ export default function Employees() {
       bank_name: emp.bank_name || '', account_no: emp.account_no || '',
       ifsc_code: emp.ifsc_code || '', current_address: emp.current_address || '',
       permanent_address: emp.permanent_address || '', emergency_name: emp.emergency_name || '',
-      emergency_phone: emp.emergency_phone || ''
+      emergency_phone: emp.emergency_phone || '',
+      uan_no: emp.uan_no || '',
+      pf_no: emp.pf_no || '',
+      esi_no: emp.esi_no || '',
+      location: emp.location || ''
     })
     setFormError('')
     setShowModal(true)
@@ -260,6 +265,10 @@ export default function Employees() {
         permanent_address: formData.permanent_address?.trim() || null,
         emergency_name: formData.emergency_name?.trim() || null,
         emergency_phone: formData.emergency_phone?.trim() || null,
+        uan_no: formData.uan_no?.trim() || null,
+        pf_no: formData.pf_no?.trim() || null,
+        esi_no: formData.esi_no?.trim() || null,
+        location: formData.location?.trim() || null,
       }
       if (editingEmployee) {
         await employeeApi.update(editingEmployee.id, payload)
@@ -717,6 +726,41 @@ export default function Employees() {
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
                         placeholder="+91 9988776655" />
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Compliance / PF Details */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 text-orange-600">📋 Compliance / PF Details</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">UAN Number</label>
+                    <input type="text" value={formData.uan_no}
+                      onChange={e => setFormData(d => ({...d, uan_no: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                      placeholder="101068566247" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">PF Number</label>
+                    <input type="text" value={formData.pf_no}
+                      onChange={e => setFormData(d => ({...d, pf_no: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                      placeholder="MH/BAN/12345/001" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">ESI Number</label>
+                    <input type="text" value={formData.esi_no}
+                      onChange={e => setFormData(d => ({...d, esi_no: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                      placeholder="4117119982" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Location / Branch</label>
+                    <input type="text" value={formData.location}
+                      onChange={e => setFormData(d => ({...d, location: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                      placeholder="West Bengal" />
                   </div>
                 </div>
               </div>

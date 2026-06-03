@@ -43,6 +43,12 @@ class Employee(Base):
     emergency_name = Column(String(100), nullable=True)
     emergency_phone = Column(String(20), nullable=True)
     
+    # Compliance fields
+    uan_no = Column(String(30), nullable=True)
+    pf_no = Column(String(30), nullable=True)
+    esi_no = Column(String(30), nullable=True)
+    location = Column(String(100), nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

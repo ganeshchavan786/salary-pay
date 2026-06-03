@@ -53,6 +53,17 @@ class PayslipGenerator:
                 "emp_code": employee.get("emp_code", ""),
                 "department": employee.get("department", ""),
                 "designation": employee.get("designation", ""),
+                "joining_date": str(employee.get("joining_date", "-")),
+                "aadhaar_no": employee.get("aadhaar_no", "-"),
+                "pan_no": employee.get("pan_no", "-"),
+                "bank_name": employee.get("bank_name", "-"),
+                "account_no": employee.get("account_no", "-"),
+                "ifsc_code": employee.get("ifsc_code", "-"),
+                # Compliance fields
+                "uan_no": employee.get("uan_no", "-"),
+                "pf_no": employee.get("pf_no", "-"),
+                "esi_no": employee.get("esi_no", "-"),
+                "location": employee.get("location", "-"),
             },
             "period": salary_calc.get("period_name", ""),
             "earnings": earnings,
@@ -60,6 +71,11 @@ class PayslipGenerator:
             "gross_salary": salary_calc.get("gross_salary", 0),
             "total_deductions": salary_calc.get("total_deductions", 0),
             "net_salary": salary_calc.get("net_salary", 0),
+            # Attendance info
+            "working_days": salary_calc.get("working_days", 0),
+            "present_days": salary_calc.get("present_days", 0),
+            "absent_days": salary_calc.get("absent_days", 0),
+            "total_days": salary_calc.get("total_days", 0),
             "generated_at": datetime.utcnow().isoformat(),
         }
 

@@ -74,6 +74,11 @@ def _build_employee_dict(employee: Employee) -> Dict:
         "account_no": employee.account_no or "-",
         "ifsc_code": employee.ifsc_code or "-",
         "joining_date": employee.joining_date or "-",
+        # Compliance fields (new)
+        "uan_no": getattr(employee, "uan_no", None) or "-",
+        "pf_no": getattr(employee, "pf_no", None) or "-",
+        "esi_no": getattr(employee, "esi_no", None) or "-",
+        "location": getattr(employee, "location", None) or "-",
     }
 
 

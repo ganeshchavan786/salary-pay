@@ -104,6 +104,11 @@ export default function EmployeeProfile() {
       ifsc_code: employee.ifsc_code || '', current_address: employee.current_address || '',
       permanent_address: employee.permanent_address || '', emergency_name: employee.emergency_name || '',
       emergency_phone: employee.emergency_phone || '',
+      // Compliance fields
+      uan_no: employee.uan_no || '',
+      pf_no: employee.pf_no || '',
+      esi_no: employee.esi_no || '',
+      location: employee.location || '',
     })
     setEditing(true)
   }
@@ -121,6 +126,11 @@ export default function EmployeeProfile() {
         ifsc_code: editForm.ifsc_code || null, current_address: editForm.current_address || null,
         permanent_address: editForm.permanent_address || null, emergency_name: editForm.emergency_name || null,
         emergency_phone: editForm.emergency_phone || null,
+        // Compliance fields
+        uan_no: editForm.uan_no || null,
+        pf_no: editForm.pf_no || null,
+        esi_no: editForm.esi_no || null,
+        location: editForm.location || null,
       })
       toast.success('Employee updated')
       setEditing(false)
@@ -343,12 +353,19 @@ export default function EmployeeProfile() {
                   { label: 'Permanent Address', key: 'permanent_address', type: 'text' },
                   { label: 'Emergency Contact Name', key: 'emergency_name', type: 'text' },
                   { label: 'Emergency Contact Phone', key: 'emergency_phone', type: 'text' },
+                  { label: '— Compliance Fields —', key: '_sep', type: 'sep' },
+                  { label: 'UAN Number', key: 'uan_no', type: 'text' },
+                  { label: 'PF Number', key: 'pf_no', type: 'text' },
+                  { label: 'ESI Number', key: 'esi_no', type: 'text' },
+                  { label: 'Location / Branch', key: 'location', type: 'text' },
                 ].map(f => (
-                  <div key={f.key}>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
-                    <input type={f.type} value={editForm[f.key] || ''} onChange={e => setEditForm(d => ({...d, [f.key]: e.target.value}))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-                  </div>
+                  f.type === 'sep'
+                    ? <div key={f.key} className="mt-2 mb-1 text-xs font-bold text-gray-400 uppercase tracking-wider border-t pt-2">{f.label}</div>
+                    : <div key={f.key}>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
+                        <input type={f.type} value={editForm[f.key] || ''} onChange={e => setEditForm(d => ({...d, [f.key]: e.target.value}))}
+                          className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                      </div>
                 ))}
               </div>
             ) : (
@@ -370,6 +387,10 @@ export default function EmployeeProfile() {
                   { icon: MapPin, label: 'Address (C)', value: emp.current_address || '—' },
                   { icon: MapPin, label: 'Address (P)', value: emp.permanent_address || '—' },
                   { icon: PhoneCall, label: 'Emergency', value: emp.emergency_name ? `${emp.emergency_name} (${emp.emergency_phone || '—'})` : '—' },
+                  { icon: FileText, label: 'UAN No', value: emp.uan_no || '—' },
+                  { icon: FileText, label: 'PF No', value: emp.pf_no || '—' },
+                  { icon: FileText, label: 'ESI No', value: emp.esi_no || '—' },
+                  { icon: MapPin, label: 'Location', value: emp.location || '—' },
                 ].map(f => {
                   const Icon = f.icon || User
                   return (

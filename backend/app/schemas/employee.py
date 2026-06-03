@@ -26,6 +26,11 @@ class EmployeeCreate(BaseModel):
     permanent_address: Optional[str] = None
     emergency_name: Optional[str] = None
     emergency_phone: Optional[str] = None
+    # Compliance fields
+    uan_no: Optional[str] = None
+    pf_no: Optional[str] = None
+    esi_no: Optional[str] = None
+    location: Optional[str] = None
 
 
 class EmployeeUpdate(BaseModel):
@@ -49,6 +54,11 @@ class EmployeeUpdate(BaseModel):
     permanent_address: Optional[str] = None
     emergency_name: Optional[str] = None
     emergency_phone: Optional[str] = None
+    # Compliance fields
+    uan_no: Optional[str] = None
+    pf_no: Optional[str] = None
+    esi_no: Optional[str] = None
+    location: Optional[str] = None
 
 
 class EmployeeResponse(BaseModel):
@@ -77,6 +87,11 @@ class EmployeeResponse(BaseModel):
     permanent_address: Optional[str] = None
     emergency_name: Optional[str] = None
     emergency_phone: Optional[str] = None
+    # Compliance fields
+    uan_no: Optional[str] = None
+    pf_no: Optional[str] = None
+    esi_no: Optional[str] = None
+    location: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
