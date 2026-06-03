@@ -384,8 +384,6 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         pdf.rect(10, y_att, 190, box_h)
 
         # Row 1
-        pdf.set_font("Helvetica", "", 7)
-        pdf.set_text_color(*COLOR_TEXT_MUTED)
         row1_y = y_att + 1
         items_row1 = [
             f"Total Days: {att_total}",
@@ -396,11 +394,13 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         col_w = 47
         for idx, txt in enumerate(items_row1):
             x = 13 + idx * col_w
-            pdf.set_xy(x, row1_y)
-            # Box symbol
-            pdf.set_font("Helvetica", "", 7)
-            pdf.set_text_color(*COLOR_TEXT_MUTED)
-            pdf.cell(3, 6, safe_str(chr(9744)))  # ☐ ballot box
+            # Draw ballot box rectangle
+            pdf.set_draw_color(148, 163, 184)  # Slate 400
+            pdf.set_line_width(0.2)
+            pdf.rect(x, row1_y + 1.8, 2.2, 2.2)
+            
+            # Print text
+            pdf.set_xy(x + 3.5, row1_y)
             pdf.set_font("Helvetica", "B", 7.2)
             pdf.set_text_color(*COLOR_TEXT_DARK)
             pdf.cell(42, 6, safe_str(txt))
@@ -415,10 +415,13 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
         ]
         for idx, txt in enumerate(items_row2):
             x = 13 + idx * col_w
-            pdf.set_xy(x, row2_y)
-            pdf.set_font("Helvetica", "", 7)
-            pdf.set_text_color(*COLOR_TEXT_MUTED)
-            pdf.cell(3, 6, safe_str(chr(9744)))
+            # Draw ballot box rectangle
+            pdf.set_draw_color(148, 163, 184)  # Slate 400
+            pdf.set_line_width(0.2)
+            pdf.rect(x, row2_y + 1.8, 2.2, 2.2)
+            
+            # Print text
+            pdf.set_xy(x + 3.5, row2_y)
             pdf.set_font("Helvetica", "B", 7.2)
             pdf.set_text_color(*COLOR_TEXT_DARK)
             pdf.cell(42, 6, safe_str(txt))
@@ -547,6 +550,7 @@ def generate_salary_slip(payroll: dict, employee: dict) -> bytes:
                 pdf.set_xy(10, sum_y)
                 pdf.cell(190, 6, "ATTENDANCE SUMMARY", align="C")
 
+                sum_y += 8
                 box_items = [
                     ("Total Days", att_total),
                     ("Working", att_working),
