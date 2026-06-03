@@ -210,7 +210,7 @@ export default function RealTimeSalaryTracker() {
                           <span className="text-gray-400">—</span>
                         ) : (
                           <span>
-                            {presents} <span className="text-gray-400 font-normal">/ {working} days</span>
+                            {presents} <span className="text-gray-400 font-normal font-sans">/ {p.total_days} days</span>
                           </span>
                         )}
                       </td>

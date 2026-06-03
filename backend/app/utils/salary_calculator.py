@@ -2,7 +2,7 @@ import logging
 import uuid
 from decimal import Decimal
 from typing import Dict, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
@@ -412,11 +412,28 @@ class SalaryCalculator:
         basic = Decimal(str(config.basic_salary))
         hra_pct = Decimal(str(config.hra_percentage))
 
+        # Determine the full month range to get the correct pro-rata denominator
+        import calendar
+        
+        # start_date is date(year, month, 1)
+        _, last_day = calendar.monthrange(start_date.year, start_date.month)
+        full_month_end = date(start_date.year, start_date.month, last_day)
+        
+        # Calculate weekdays in the entire month
+        temp_date = start_date
+        full_month_working_days = 0
+        while temp_date <= full_month_end:
+            if temp_date.weekday() < 5:  # Monday to Friday
+                full_month_working_days += 1
+            temp_date += timedelta(days=1)
+            
+        if full_month_working_days <= 0:
+            full_month_working_days = 26
+            
+        full_month_calendar_days = last_day
+
         # Get attendance values
         present_days = attendance_data.get("present_days", 0)
-        working_days = attendance_data.get("working_days", 26)
-        if working_days <= 0:
-            working_days = 26
 
         if present_days == 0:
             # Zero attendance: calculate full gross components, LOP will deduct
@@ -426,8 +443,8 @@ class SalaryCalculator:
             travel_allowance = Decimal(str(config.travel_allowance)).quantize(Decimal("0.01"))
             medical_allowance = Decimal(str(config.medical_allowance)).quantize(Decimal("0.01"))
         else:
-            # Partial or full attendance: apply pro-rata
-            pro_rata_factor = Decimal(str(present_days)) / Decimal(str(working_days))
+            # Partial or full attendance: apply pro-rata using the full month's weekdays
+            pro_rata_factor = Decimal(str(present_days)) / Decimal(str(full_month_working_days))
             basic_earned = (basic * pro_rata_factor).quantize(Decimal("0.01"))
             special_allowance = (Decimal(str(config.special_allowance)) * pro_rata_factor).quantize(Decimal("0.01"))
             travel_allowance = (Decimal(str(config.travel_allowance)) * pro_rata_factor).quantize(Decimal("0.01"))
@@ -492,7 +509,7 @@ class SalaryCalculator:
         lop_days = Decimal(str(absent_days_count)) + (Decimal(str(halfday_count)) * Decimal("0.5"))
         
         lop_deduction = (
-            (basic / Decimal(str(working_days)) * lop_days).quantize(Decimal("0.01"))
+            (basic / Decimal(str(full_month_working_days)) * lop_days).quantize(Decimal("0.01"))
             if lop_days > 0
             else Decimal("0")
         )
@@ -536,7 +553,8 @@ class SalaryCalculator:
             "present_days": present_days,
             "absent_days": absent_days_count,
             "leave_days": attendance_data.get("leave_days", 0),
-            "working_days": working_days,
+            "working_days": full_month_working_days,
+            "total_days": full_month_calendar_days,
             "ot_hours": float(attendance_data.get("overtime_hours", 0)),
             "gross_salary": float(gross_salary),
             "lop_deduction": float(lop_deduction),
